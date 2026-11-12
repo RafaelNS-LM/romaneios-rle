@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0b2545">
+<title>Romaneios - RLE</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>window.jspdf || document.write('<script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"><\/script>');</script>
+<style>
+  :root{
+    --navy:#0b2545; --navy2:#13315c; --azul:#1f6feb; --azul-claro:#e8f0fe;
+    --verde:#1a7f37; --verde-claro:#e6f4ea; --amarelo:#8a5a00; --amarelo-claro:#fff6d6;
+    --vermelho:#b42318; --vermelho-claro:#fdecea;
+    --fundo:#f3f5f9; --card:#fff; --borda:#d8dee8; --texto:#1c2430; --suave:#5b6675;
+    --raio:16px;
+    --sb:env(safe-area-inset-bottom,0px); --sl:env(safe-area-inset-left,0px); --sr:env(safe-area-inset-right,0px); --st:env(safe-area-inset-top,0px);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+  body{margin:0;min-height:100vh;min-height:100dvh;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+       background:var(--fundo);color:var(--texto);-webkit-font-smoothing:antialiased;font-size:16px;line-height:1.4}
+  button,input,select,textarea{font:inherit;color:inherit}
+  button{-webkit-appearance:none;appearance:none}
+
+  header{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;
+         padding:calc(16px + var(--st)) calc(18px + var(--sr)) 56px calc(18px + var(--sl))}
+  .topo{max-width:1100px;margin:0 auto}
+  header h1{margin:0;font-size:22px;letter-spacing:.2px}
+  header p{margin:4px 0 0;opacity:.78;font-size:14px}
+
+  main{max-width:640px;margin:-42px auto 0;padding:0 calc(12px + var(--sr)) calc(28px + var(--sb)) calc(12px + var(--sl));transition:max-width .2s}
+  body.modo-pesquisa main{max-width:1100px}
+
+  .abas{display:flex;background:var(--card);border-radius:var(--raio);padding:5px;gap:5px;box-shadow:0 2px 12px rgba(11,37,69,.10)}
+  .aba{flex:1;border:0;background:none;min-height:48px;border-radius:12px;font-size:16px;font-weight:700;color:var(--suave);cursor:pointer}
+  .aba.ativa{background:var(--navy);color:#fff}
+
+  .card{background:var(--card);border-radius:var(--raio);padding:18px;margin-top:12px;box-shadow:0 2px 12px rgba(11,37,69,.06)}
+  .card h2{margin:0 0 14px;font-size:17px}
+  label.campo{display:block;font-size:12px;font-weight:700;color:var(--suave);margin:14px 0 6px;text-transform:uppercase;letter-spacing:.5px}
+  input[type=text],input[type=search],select{width:100%;min-height:50px;padding:12px 14px;border:1px solid var(--borda);border-radius:12px;font-size:16px;background:#fff;-webkit-appearance:none;appearance:none}
+  select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%235b6675' stroke-width='2'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:38px}
+  input:focus,select:focus{outline:2px solid var(--azul);outline-offset:0;border-color:transparent}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:14px;min-height:52px;padding:12px 18px;font-size:16px;font-weight:700;cursor:pointer;text-decoration:none;white-space:nowrap}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .prim{background:var(--azul);color:#fff}
+  .sec{background:var(--azul-claro);color:var(--azul)}
+  .ok{background:var(--verde);color:#fff}
+  .neutro{background:#eef1f5;color:var(--texto)}
+  .largo{width:100%}
+  .linha-btn{display:flex;gap:10px;margin-top:16px}
+  .linha-btn .btn{flex:1}
+
+  /* captura */
+  .captura{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .captura label{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:110px;padding:16px 10px;border-radius:14px;font-weight:700;cursor:pointer;text-align:center}
+  .captura .ico{font-size:32px;line-height:1}
+  .captura input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+  .pags{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px;margin-top:14px}
+  .pag{position:relative;border:1px solid var(--borda);border-radius:12px;overflow:hidden;background:#fafbfc}
+  .pag img{display:block;width:100%;height:136px;object-fit:contain;background:#fff}
+  .pag .num{position:absolute;top:6px;left:6px;background:var(--navy);color:#fff;font-size:11px;font-weight:700;border-radius:6px;padding:2px 6px}
+  .pag .acoes{display:flex;border-top:1px solid var(--borda)}
+  .pag .acoes button{flex:1;border:0;background:none;min-height:42px;font-size:18px;cursor:pointer}
+  .dica{font-size:14px;color:var(--suave);margin:12px 0 0}
+
+  /* conferir */
+  .alerta{border-radius:12px;padding:12px 14px;font-size:14px;margin-bottom:10px}
+  .alerta.am{background:var(--amarelo-claro);color:var(--amarelo)}
+  .alerta.vm{background:var(--vermelho-claro);color:var(--vermelho)}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .chip{border:1px solid var(--borda);background:#fff;border-radius:999px;min-height:38px;padding:6px 14px;font-size:14px;font-weight:600;cursor:pointer}
+  .chip.sel{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .contador{display:flex;align-items:center;gap:10px}
+  .contador button{width:58px;height:58px;flex:none;border:0;border-radius:14px;background:var(--azul-claro);color:var(--azul);font-size:28px;font-weight:700;cursor:pointer}
+  .contador input{flex:1;min-width:0;height:58px;text-align:center;font-size:30px;font-weight:800;color:var(--navy);border:1px solid var(--borda);border-radius:14px;-webkit-appearance:none;appearance:none;-moz-appearance:textfield}
+  .contador input::-webkit-outer-spin-button,.contador input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  .info-pag{font-size:14px;color:var(--suave);margin-top:14px}
+
+  .sucesso{text-align:center;padding:28px 18px}
+  .sucesso .big{font-size:52px;line-height:1}
+  .sucesso h2{margin:12px 0 6px;font-size:21px}
+  .caminho{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;background:var(--fundo);border-radius:10px;padding:10px;margin:12px 0 4px;word-break:break-all}
+
+  /* pesquisa */
+  .busca{display:grid;grid-template-columns:1fr auto;gap:10px}
+  .busca #q{order:1;min-width:0}
+  .busca #btnBuscar{order:2}
+  .filtros{order:3;grid-column:1 / -1}
+  .filtros label.campo{margin-top:2px}
+  .res .sem{display:none}
+  .res-cab{display:none}
+  .res{border:1px solid var(--borda);border-radius:14px;padding:14px;margin-top:10px;display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center}
+  .res .c-dest{font-weight:800;font-size:16px;color:var(--navy)}
+  .res .c-data,.res .c-qtd,.res .c-lista,.res .c-por{font-size:14px;color:var(--suave)}
+  .res .c-data{grid-column:1}
+  .res .c-qtd,.res .c-lista,.res .c-por{grid-column:1}
+  .res .c-acao{grid-column:2;grid-row:1 / span 5}
+  .res .c-acao .btn{min-height:46px;padding:10px 16px;font-size:15px}
+  .res .rot{display:inline}
+  .vazio{color:var(--suave);text-align:center;padding:24px 8px;font-size:15px}
+  .res-titulo{font-size:14px;color:var(--suave);margin:14px 0 0}
+
+  .carregando{position:fixed;inset:0;background:rgba(11,37,69,.55);display:none;align-items:center;justify-content:center;z-index:10;padding:20px}
+  .carregando.on{display:flex}
+  .caixa{background:#fff;border-radius:18px;padding:24px 28px;text-align:center;max-width:300px;font-weight:600}
+  .spin{width:40px;height:40px;border:4px solid var(--azul-claro);border-top-color:var(--azul);border-radius:50%;margin:0 auto 12px;animation:g .9s linear infinite}
+  @keyframes g{to{transform:rotate(360deg)}}
+  .oculto{display:none!important}
+
+  /* ---------- celular: barra de ações fixa embaixo ---------- */
+  @media (max-width:640px){
+    .barra-fixa{position:sticky;bottom:0;margin:16px -18px -18px;padding:12px 18px calc(12px + var(--sb));background:rgba(255,255,255,.96);
+                -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-top:1px solid var(--borda);border-radius:0 0 var(--raio) var(--raio)}
+    .barra-fixa.linha-btn{margin-top:16px}
+  }
+  @media (max-width:360px){
+    .captura label{min-height:96px;font-size:14px}
+    .contador button{width:50px;height:50px}
+  }
+
+  /* ---------- PC / notebook: pesquisa em tabela ---------- */
+  @media (min-width:820px){
+    header h1{font-size:26px}
+    .busca{grid-template-columns:1fr 260px auto}
+    .filtros label.campo{display:none}
+    .filtros{order:2;grid-column:auto}
+    .busca #btnBuscar{order:3}
+    .res .sem{display:block}
+    .res-cab,.res{display:grid;grid-template-columns:160px 1.1fr 110px 140px 1fr 140px;gap:12px;align-items:center}
+    .res-cab{margin-top:14px;padding:10px 14px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--suave);border-bottom:2px solid var(--borda)}
+    .res{margin-top:0;border:0;border-bottom:1px solid var(--borda);border-radius:0;padding:12px 14px}
+    .res:hover{background:#f7f9fc}
+    .res .c-data,.res .c-dest,.res .c-qtd,.res .c-lista,.res .c-por,.res .c-acao{grid-column:auto;grid-row:auto}
+    .res .c-data,.res .c-qtd,.res .c-lista,.res .c-por{font-size:15px;color:var(--texto)}
+    .res .c-dest{font-size:15px}
+    .res .rot{display:none}
+    .res .c-acao{text-align:right}
+    .res .c-data{order:-1}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="topo">
+    <h1>📦 Romaneios - RLE</h1>
+    <p>Protocolos de carregamento em PDF no Drive, por destinatário</p>
+  </div>
+</header>
+
+<main>
+  <div class="abas">
+    <button class="aba ativa" data-aba="enviar">📤 Enviar</button>
+    <button class="aba" data-aba="pesquisar">🔎 Pesquisar</button>
+  </div>
+
+  <!-- ===================== ENVIAR ===================== -->
+  <section id="aba-enviar">
+    <!-- Passo 1: fotos -->
+    <div id="passo-fotos" class="card">
+      <h2>1. Fotografe o romaneio</h2>
+      <div class="captura">
+        <label class="sec"><span class="ico">📷</span>Tirar foto
+          <input id="inCamera" type="file" accept="image/*" capture="environment">
+        </label>
+        <label class="neutro"><span class="ico">🖼️</span>Galeria / arquivo
+          <input id="inGaleria" type="file" accept="image/*" multiple>
+        </label>
+      </div>
+      <div id="pags" class="pags"></div>
+      <p class="dica">Papel inteiro na foto, reto e com boa luz. Mais de uma página? Tire uma foto por página. Use ⟳ para girar.</p>
+      <label class="campo" for="enviadoPor">Quem está enviando (opcional)</label>
+      <input id="enviadoPor" type="text" placeholder="Seu nome" autocomplete="name" autocapitalize="words">
+      <div class="linha-btn barra-fixa">
+        <button id="btnLer" class="btn prim largo" disabled>Continuar →</button>
+      </div>
+    </div>
+
+    <!-- Passo 2: conferir -->
+    <div id="passo-conferir" class="card oculto">
+      <h2>2. Confira e salve</h2>
+      <div id="avisos"></div>
+      <div id="dup" class="alerta vm oculto"></div>
+
+      <label class="campo" for="fQtd">Quantidade de entregas</label>
+      <div class="contador">
+        <button type="button" id="qMenos" aria-label="Diminuir">−</button>
+        <input id="fQtd" type="text" inputmode="numeric" pattern="[0-9]*" value="0" aria-label="Quantidade de entregas">
+        <button type="button" id="qMais" aria-label="Aumentar">+</button>
+      </div>
+
+      <label class="campo" for="fDest">Destinatário (nome da pasta)</label>
+      <input id="fDest" type="text" list="dlDest" placeholder="Ex.: SC1087" autocapitalize="characters" autocomplete="off">
+      <datalist id="dlDest"></datalist>
+      <div id="chipsDest" class="chips"></div>
+
+      <div id="infoPag" class="info-pag"></div>
+
+      <div class="linha-btn barra-fixa">
+        <button id="btnVoltar" class="btn neutro">← Fotos</button>
+        <button id="btnSalvar" class="btn ok">✔ Salvar</button>
+      </div>
+    </div>
+
+    <!-- Passo 3: ok -->
+    <div id="passo-ok" class="card sucesso oculto">
+      <div class="big">✅</div>
+      <h2>Romaneio salvo!</h2>
+      <div id="okResumo"></div>
+      <div id="okCaminho" class="caminho"></div>
+      <div class="linha-btn">
+        <a id="okLink" class="btn sec" href="#" target="_blank" rel="noopener">Abrir PDF</a>
+        <button id="btnNovo" class="btn prim">📷 Enviar outro</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== PESQUISAR ===================== -->
+  <section id="aba-pesquisar" class="oculto">
+    <div class="card">
+      <h2>Pesquisar romaneio</h2>
+      <div class="busca">
+        <input id="q" type="search" placeholder="Destinatário, data (11/11/2026), pedido, NF, lista…" enterkeyhint="search">
+        <div class="filtros">
+          <label class="campo" for="filtroDest">Destinatário</label>
+          <select id="filtroDest"><option value="">Todos os destinatários</option></select>
+        </div>
+        <button id="btnBuscar" class="btn prim">Buscar</button>
+      </div>
+      <div id="resTitulo" class="res-titulo"></div>
+      <div class="res-cab"><div>Enviado em</div><div>Destinatário</div><div>Entregas</div><div>Nº Lista</div><div>Enviado por</div><div></div></div>
+      <div id="resultados"></div>
+    </div>
+  </section>
+</main>
+
+<div id="carregando" class="carregando"><div class="caixa"><div class="spin"></div><div id="msgCarregando">Processando…</div></div></div>
+
+<script>
+(function(){
+  // ---------- estado ----------
+  var pags = [];           // {id, img, rot, thumb}
+  var leitura = null;      // resultado da leitura do romaneio
+  var destinatarios = [];
+  var seq = 0;
+  var PASTA_MISTURADO = 'Outras Lojas';
+  var QUALIDADE = { lado: 2200, q: 0.75 };   // ~300–600 KB por página (legível e leve)
+
+  var $ = function(id){ return document.getElementById(id); };
+  var temServidor = !!(window.google && google.script && google.script.run);
+  function chamar(fn){
+    var args = Array.prototype.slice.call(arguments, 1);
+    return new Promise(function(res, rej){
+      if (!temServidor) return rej(new Error('Abra pelo link do app (…/exec). Este arquivo não funciona aberto direto no celular.'));
+      var r = google.script.run.withSuccessHandler(res).withFailureHandler(rej);
+      r[fn].apply(r, args);
+    });
+  }
+  function carregando(msg){ $('msgCarregando').textContent = msg || 'Processando…'; $('carregando').classList.add('on'); }
+  function pronto(){ $('carregando').classList.remove('on'); }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function erroMsg(e){ return (e && e.message) ? e.message : String(e); }
+
+  // ---------- abas ----------
+  document.querySelectorAll('.aba').forEach(function(b){
+    b.addEventListener('click', function(){
+      var p = b.dataset.aba === 'pesquisar';
+      document.querySelectorAll('.aba').forEach(function(x){ x.classList.toggle('ativa', x === b); });
+      $('aba-enviar').classList.toggle('oculto', p);
+      $('aba-pesquisar').classList.toggle('oculto', !p);
+      document.body.classList.toggle('modo-pesquisa', p);
+      if (p && window.matchMedia('(min-width:820px)').matches) $('q').focus();
+    });
+  });
+
+  // ---------- nome salvo no aparelho ----------
+  try { $('enviadoPor').value = localStorage.getItem('romaneio_nome') || ''; } catch(e){}
+  $('enviadoPor').addEventListener('change', function(){ try { localStorage.setItem('romaneio_nome', this.value.trim()); } catch(e){} });
+
+  // ---------- imagens ----------
+  function abrirImagem(file){
+    return new Promise(function(res, rej){
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function(){ res(img); };
+      img.onerror = function(){ rej(new Error('Não consegui abrir a imagem ' + (file.name || ''))); };
+      img.src = url;
+    });
+  }
+  function renderizar(img, rot, maxLado, q){
+    var s = Math.min(1, maxLado / Math.max(img.naturalWidth, img.naturalHeight));
+    var w = Math.round(img.naturalWidth * s), h = Math.round(img.naturalHeight * s);
+    var r = ((rot % 360) + 360) % 360;
+    var c = document.createElement('canvas');
+    c.width = (r % 180 === 0) ? w : h;
+    c.height = (r % 180 === 0) ? h : w;
+    var ctx = c.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+    ctx.translate(c.width / 2, c.height / 2);
+    ctx.rotate(r * Math.PI / 180);
+    ctx.drawImage(img, -w / 2, -h / 2, w, h);
+    return { dataUrl: c.toDataURL('image/jpeg', q), w: c.width, h: c.height };
+  }
+  async function adicionar(files){
+    if (!files.length) return;
+    carregando('Preparando foto…');
+    for (var i = 0; i < files.length; i++){
+      try {
+        var img = await abrirImagem(files[i]);
+        var p = { id: ++seq, img: img, rot: 0 };
+        p.thumb = renderizar(img, 0, 320, 0.7).dataUrl;
+        pags.push(p);
+      } catch(e){ alert(erroMsg(e)); }
+    }
+    pronto();
+    desenharPags();
+  }
+  function desenharPags(){
+    var box = $('pags');
+    box.innerHTML = '';
+    pags.forEach(function(p, i){
+      var d = document.createElement('div');
+      d.className = 'pag';
+      d.innerHTML = '<span class="num">Pág. ' + (i + 1) + '</span><img alt="">' +
+        '<div class="acoes"><button type="button" title="Girar" data-a="girar">⟳</button>' +
+        (i > 0 ? '<button type="button" title="Mover para antes" data-a="subir">↑</button>' : '') +
+        '<button type="button" title="Remover" data-a="del">🗑</button></div>';
+      d.querySelector('img').src = p.thumb;
+      d.querySelectorAll('button').forEach(function(b){
+        b.addEventListener('click', function(){
+          if (b.dataset.a === 'girar'){ p.rot = (p.rot + 90) % 360; p.thumb = renderizar(p.img, p.rot, 320, 0.7).dataUrl; }
+          if (b.dataset.a === 'del'){ pags.splice(pags.indexOf(p), 1); }
+          if (b.dataset.a === 'subir'){ var k = pags.indexOf(p); pags.splice(k, 1); pags.splice(k - 1, 0, p); }
+          desenharPags();
+        });
+      });
+      box.appendChild(d);
+    });
+    $('btnLer').disabled = pags.length === 0;
+  }
+  $('inCamera').addEventListener('change', function(){ adicionar(Array.prototype.slice.call(this.files)); this.value = ''; });
+  $('inGaleria').addEventListener('change', function(){ adicionar(Array.prototype.slice.call(this.files)); this.value = ''; });
+
+  function paginasFinais(){ return pags.map(function(p){ return renderizar(p.img, p.rot, QUALIDADE.lado, QUALIDADE.q); }); }
+  function b64(dataUrl){ return dataUrl.split(',')[1]; }
+
+  // ---------- passo 1 → 2: ler ----------
+  $('btnLer').addEventListener('click', async function(){
+    carregando('Lendo o romaneio…');
+    try {
+      var finais = paginasFinais();
+      leitura = await chamar('lerRomaneio', finais.map(function(f){ return b64(f.dataUrl); }));
+    } catch(e){
+      leitura = { erroOcr: erroMsg(e), destinatariosDetectados: [], entregas: [], pedidos: [], nfs: [], qtdEntregas: 0 };
+    }
+    pronto();
+    preencher(leitura);
+    mostrarPasso('conferir');
+  });
+
+  function preencher(d){
+    $('fQtd').value = d.qtdEntregas || 0;
+    $('fDest').value = d.destinatario || '';
+    $('dup').classList.add('oculto');
+    if (d.destinatariosExistentes) atualizarDestinatarios(d.destinatariosExistentes);
+
+    var av = '';
+    if (d.erroOcr) av += '<div class="alerta am">⚠️ Não consegui ler o romaneio automaticamente. Informe a quantidade e o destinatário. <small>(' + esc(d.erroOcr) + ')</small></div>';
+    if (d.misturado) av += '<div class="alerta am">🔀 Mais de um destinatário neste romaneio: <b>' +
+      d.destinatariosDetectados.map(function(x){ return esc(x.codigo) + ' (' + x.qtd + ')'; }).join(', ') +
+      '</b>. Vai para a pasta <b>' + PASTA_MISTURADO + '</b>. Se foi erro de leitura, toque no destinatário certo.</div>';
+    $('avisos').innerHTML = av;
+
+    var chips = $('chipsDest'); chips.innerHTML = '';
+    var opc = (d.destinatariosDetectados || []).map(function(x){ return x.codigo; });
+    if (opc.length > 1) opc.push(PASTA_MISTURADO);
+    opc.forEach(function(c){
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'chip'; b.textContent = c;
+      b.addEventListener('click', function(){ $('fDest').value = c; marcarChips(); });
+      chips.appendChild(b);
+    });
+    marcarChips();
+    $('infoPag').textContent = pags.length + (pags.length > 1 ? ' páginas' : ' página') + ' · data e hora registradas no momento do envio';
+  }
+  function marcarChips(){
+    var v = $('fDest').value.trim().toUpperCase();
+    document.querySelectorAll('#chipsDest .chip').forEach(function(c){ c.classList.toggle('sel', c.textContent.toUpperCase() === v); });
+  }
+  $('fDest').addEventListener('input', marcarChips);
+  function qtd(){ var n = parseInt(String($('fQtd').value).replace(/\D/g, ''), 10); return isNaN(n) ? 0 : n; }
+  $('qMenos').addEventListener('click', function(){ $('fQtd').value = Math.max(0, qtd() - 1); });
+  $('qMais').addEventListener('click', function(){ $('fQtd').value = qtd() + 1; });
+  $('fQtd').addEventListener('input', function(){ this.value = this.value.replace(/\D/g, ''); });
+  $('fQtd').addEventListener('focus', function(){ this.select(); });
+
+  // ---------- passo 2: salvar ----------
+  function montarPdf(finais){
+    var J = window.jspdf && window.jspdf.jsPDF;
+    if (!J) return null;
+    var doc;
+    finais.forEach(function(p, i){
+      var o = p.w > p.h ? 'l' : 'p';
+      if (i === 0) doc = new J({ orientation: o, unit: 'pt', format: 'a4', compress: true });
+      else doc.addPage('a4', o);
+      var pw = doc.internal.pageSize.getWidth(), ph = doc.internal.pageSize.getHeight(), m = 14;
+      var s = Math.min((pw - 2 * m) / p.w, (ph - 2 * m) / p.h);
+      var w = p.w * s, h = p.h * s;
+      doc.addImage(p.dataUrl, 'JPEG', (pw - w) / 2, (ph - h) / 2, w, h, undefined, 'FAST');
+    });
+    return doc.output('datauristring').split(',')[1];
+  }
+
+  async function salvar(forcar){
+    var dest = $('fDest').value.trim().toUpperCase() === PASTA_MISTURADO.toUpperCase() ? PASTA_MISTURADO : $('fDest').value.trim();
+    if (!dest){ alert('Informe o destinatário (nome da pasta).'); $('fDest').focus(); return; }
+    if (qtd() === 0 && !confirm('Quantidade de entregas está 0. Salvar mesmo assim?')) return;
+    carregando('Gerando PDF e salvando no Drive…');
+    try {
+      var finais = paginasFinais();
+      var pdf = null;
+      try { pdf = montarPdf(finais); } catch(e){ pdf = null; }
+      var L = leitura || {};
+      var det = L.destinatariosDetectados || [];
+      var r = await chamar('salvarRomaneio', {
+        pdfBase64: pdf,
+        imagens: pdf ? [] : finais.map(function(f){ return b64(f.dataUrl); }),
+        paginas: finais.length,
+        destinatario: dest,
+        destinatariosNoRomaneio: det.length ? det.map(function(x){ return x.codigo; }).join(', ') : dest,
+        qtdEntregas: qtd(),
+        lista: L.lista || '',
+        entregas: (L.entregas || []).join(', '),
+        pedidos: (L.pedidos || []).join(', '),
+        nfs: (L.nfs || []).join(', '),
+        textoOcr: L.textoOcr || '',
+        enviadoPor: $('enviadoPor').value.trim(),
+        forcar: !!forcar
+      });
+      pronto();
+      if (r.duplicado){
+        var x = r.existente;
+        $('dup').innerHTML = '⛔ Este romaneio (lista <b>' + esc(x.lista) + '</b>) já foi enviado em ' + esc(x.enviadoEm) +
+          (x.enviadoPor ? ' por ' + esc(x.enviadoPor) : '') + ' — pasta ' + esc(x.pasta) + '.' +
+          '<div class="linha-btn"><a class="btn sec" target="_blank" rel="noopener" href="' + esc(x.link) + '">Abrir existente</a>' +
+          '<button type="button" class="btn neutro" id="btnForcar">Salvar mesmo assim</button></div>';
+        $('dup').classList.remove('oculto');
+        $('btnForcar').addEventListener('click', function(){ salvar(true); });
+        $('dup').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      $('okResumo').innerHTML = '<b>' + esc(dest) + '</b> · ' + qtd() + ' entregas<br><span style="color:var(--suave)">' + esc(r.enviadoEm) + '</span>';
+      $('okCaminho').textContent = '📁 ' + r.caminho + ' / ' + r.nome;
+      $('okLink').href = r.url;
+      if (destinatarios.indexOf(dest) < 0) atualizarDestinatarios(destinatarios.concat([dest]));
+      mostrarPasso('ok');
+    } catch(e){
+      pronto();
+      alert('Não foi possível salvar: ' + erroMsg(e) + '\nVerifique a internet e tente de novo.');
+    }
+  }
+  $('btnSalvar').addEventListener('click', function(){ salvar(false); });
+  $('btnVoltar').addEventListener('click', function(){ mostrarPasso('fotos'); });
+  $('btnNovo').addEventListener('click', function(){
+    pags = []; leitura = null; desenharPags(); mostrarPasso('fotos');
+    $('inCamera').click();
+  });
+
+  function mostrarPasso(p){
+    $('passo-fotos').classList.toggle('oculto', p !== 'fotos');
+    $('passo-conferir').classList.toggle('oculto', p !== 'conferir');
+    $('passo-ok').classList.toggle('oculto', p !== 'ok');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ---------- pesquisa ----------
+  function atualizarDestinatarios(lst){
+    destinatarios = lst.filter(function(v, i, a){ return a.indexOf(v) === i; }).sort();
+    $('dlDest').innerHTML = destinatarios.map(function(d){ return '<option value="' + esc(d) + '">'; }).join('');
+    var atual = $('filtroDest').value;
+    $('filtroDest').innerHTML = '<option value="">Todos os destinatários</option>' +
+      destinatarios.map(function(d){ return '<option' + (d === atual ? ' selected' : '') + '>' + esc(d) + '</option>'; }).join('');
+  }
+  function desenharResultados(r, titulo){
+    $('resTitulo').textContent = titulo;
+    var vazio = !r || !r.itens || !r.itens.length;
+    document.querySelector('.res-cab').classList.toggle('oculto', vazio);
+    if (vazio){ $('resultados').innerHTML = '<div class="vazio">Nenhum romaneio encontrado.</div>'; return; }
+    $('resultados').innerHTML = r.itens.map(function(x){
+      return '<div class="res">' +
+        '<div class="c-dest">' + esc(x.pasta) + (x.destinatarios && x.destinatarios !== x.pasta ? ' <span style="font-weight:500;color:var(--suave)">(' + esc(x.destinatarios) + ')</span>' : '') + '</div>' +
+        '<div class="c-data"><span class="rot">📅 </span>' + esc(x.enviadoEm) + '</div>' +
+        '<div class="c-qtd">' + esc(x.qtd || '0') + '<span class="rot"> entregas</span></div>' +
+        '<div class="c-lista' + (x.lista ? '' : ' sem') + '"><span class="rot">Lista </span>' + esc(x.lista || '—') + '</div>' +
+        '<div class="c-por' + (x.enviadoPor ? '' : ' sem') + '"><span class="rot">Enviado por </span>' + esc(x.enviadoPor || '—') + '</div>' +
+        '<div class="c-acao"><a class="btn sec" target="_blank" rel="noopener" href="' + esc(x.link) + '">Abrir PDF</a></div>' +
+      '</div>';
+    }).join('');
+  }
+  async function buscar(){
+    var q = $('q').value.trim(), f = $('filtroDest').value;
+    $('resultados').innerHTML = '<div class="vazio">Buscando…</div>';
+    try {
+      var r = await chamar('pesquisar', q, f);
+      desenharResultados(r, q || f ? r.total + ' resultado(s)' + (r.total >= 100 ? ' — mostrando os 100 mais recentes' : '') : 'Últimos enviados');
+    } catch(e){ $('resultados').innerHTML = '<div class="vazio">Erro na busca: ' + esc(erroMsg(e)) + '</div>'; }
+  }
+  $('btnBuscar').addEventListener('click', buscar);
+  $('q').addEventListener('keydown', function(e){ if (e.key === 'Enter'){ e.preventDefault(); this.blur(); buscar(); } });
+  $('filtroDest').addEventListener('change', buscar);
+
+  // ---------- início ----------
+  if (!temServidor){
+    document.querySelector('main').insertAdjacentHTML('afterbegin',
+      '<div class="card alerta vm" style="margin:0 0 12px">⚠️ Este arquivo precisa ser aberto pelo <b>link do app</b> (termina em <b>/exec</b>), gerado no Apps Script. Aberto direto pelo WhatsApp ou pela pasta do celular ele não salva nem pesquisa.</div>');
+  }
+  chamar('inicial').then(function(d){
+    atualizarDestinatarios(d.destinatarios || []);
+    desenharResultados(d.recentes, 'Últimos enviados');
+  }).catch(function(e){
+    $('resultados').innerHTML = '<div class="vazio">' + esc(erroMsg(e)) + '</div>';
+  });
+})();
+</script>
+</body>
+</html>
