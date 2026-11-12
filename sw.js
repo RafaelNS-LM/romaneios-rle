@@ -1,6 +1,6 @@
 // Romaneios RLE – service worker
 // Abre rápido (guarda a tela no aparelho) e sempre busca a versão nova quando há internet.
-const VERSAO = 'romaneios-rle-v1';
+const VERSAO = 'romaneios-rle-v2';
 const ARQUIVOS = [
   './', './index.html', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/favicon.png',

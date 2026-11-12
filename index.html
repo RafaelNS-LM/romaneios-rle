@@ -14,8 +14,7 @@
 <link rel="icon" type="image/png" href="icons/favicon.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>Romaneios RLE</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script>window.jspdf || document.write('<script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"><\/script>');</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 <style>
   :root{
     --navy:#0b2545; --navy2:#13315c; --azul:#1f6feb; --azul-claro:#e8f0fe;
@@ -29,25 +28,24 @@
   html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   body{margin:0;min-height:100vh;min-height:100dvh;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
        background:var(--fundo);color:var(--texto);-webkit-font-smoothing:antialiased;font-size:16px;line-height:1.4}
-  button,input,select,textarea{font:inherit;color:inherit}
+  button,input,select{font:inherit;color:inherit}
   button{-webkit-appearance:none;appearance:none}
 
   header{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;
          padding:calc(16px + var(--st)) calc(18px + var(--sr)) 56px calc(18px + var(--sl))}
+  .topo{max-width:1100px;margin:0 auto}
   .marca{display:flex;align-items:center;gap:12px}
   .marca img{width:40px;height:40px;border-radius:10px;flex:none;box-shadow:0 0 0 1px rgba(255,255,255,.28)}
+  header h1{margin:0;font-size:22px;letter-spacing:.2px}
+  header p{margin:2px 0 0;opacity:.78;font-size:14px}
   .instalar{display:none;margin-left:auto;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff;border-radius:999px;padding:8px 14px;font-size:14px;font-weight:700;cursor:pointer}
   .instalar.on{display:inline-flex}
   .dica-ios{display:none;margin-top:12px;background:rgba(255,255,255,.12);border-radius:12px;padding:10px 12px;font-size:13px}
   .dica-ios.on{display:block}
-  .dica-ios b{color:#fff}
-  .offline{display:none;background:#b42318;color:#fff;text-align:center;font-size:13px;font-weight:600;padding:6px}
+  .offline{display:none;background:var(--vermelho);color:#fff;text-align:center;font-size:13px;font-weight:600;padding:6px}
   .offline.on{display:block}
-  .topo{max-width:1100px;margin:0 auto}
-  header h1{margin:0;font-size:22px;letter-spacing:.2px}
-  header p{margin:4px 0 0;opacity:.78;font-size:14px}
 
-  main{max-width:640px;margin:-42px auto 0;padding:0 calc(12px + var(--sr)) calc(28px + var(--sb)) calc(12px + var(--sl));transition:max-width .2s}
+  main{max-width:680px;margin:-42px auto 0;padding:0 calc(12px + var(--sr)) calc(28px + var(--sb)) calc(12px + var(--sl))}
   body.modo-pesquisa main{max-width:1100px}
 
   .abas{display:flex;background:var(--card);border-radius:var(--raio);padding:5px;gap:5px;box-shadow:0 2px 12px rgba(11,37,69,.10)}
@@ -55,7 +53,8 @@
   .aba.ativa{background:var(--navy);color:#fff}
 
   .card{background:var(--card);border-radius:var(--raio);padding:18px;margin-top:12px;box-shadow:0 2px 12px rgba(11,37,69,.06)}
-  .card h2{margin:0 0 14px;font-size:17px}
+  .card h2{margin:0 0 14px;font-size:17px;display:flex;align-items:center;gap:8px}
+  .card h2 .cont{margin-left:auto;background:var(--azul-claro);color:var(--azul);font-size:14px;border-radius:999px;padding:3px 12px}
   label.campo{display:block;font-size:12px;font-weight:700;color:var(--suave);margin:14px 0 6px;text-transform:uppercase;letter-spacing:.5px}
   input[type=text],input[type=search],select{width:100%;min-height:50px;padding:12px 14px;border:1px solid var(--borda);border-radius:12px;font-size:16px;background:#fff;-webkit-appearance:none;appearance:none}
   select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%235b6675' stroke-width='2'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:38px}
@@ -63,6 +62,7 @@
 
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:14px;min-height:52px;padding:12px 18px;font-size:16px;font-weight:700;cursor:pointer;text-decoration:none;white-space:nowrap}
   .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btn.peq{min-height:40px;padding:8px 12px;font-size:14px;border-radius:10px}
   .prim{background:var(--azul);color:#fff}
   .sec{background:var(--azul-claro);color:var(--azul)}
   .ok{background:var(--verde);color:#fff}
@@ -72,107 +72,109 @@
   .linha-btn .btn{flex:1}
 
   /* captura */
-  .captura{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-  .captura label{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:110px;padding:16px 10px;border-radius:14px;font-weight:700;cursor:pointer;text-align:center}
-  .captura .ico{font-size:32px;line-height:1}
-  .captura input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
-  .pags{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:10px;margin-top:14px}
-  .pag{position:relative;border:1px solid var(--borda);border-radius:12px;overflow:hidden;background:#fafbfc}
-  .pag img{display:block;width:100%;height:136px;object-fit:contain;background:#fff}
-  .pag .num{position:absolute;top:6px;left:6px;background:var(--navy);color:#fff;font-size:11px;font-weight:700;border-radius:6px;padding:2px 6px}
-  .pag .acoes{display:flex;border-top:1px solid var(--borda)}
-  .pag .acoes button{flex:1;border:0;background:none;min-height:42px;font-size:18px;cursor:pointer}
+  .captura{display:grid;grid-template-columns:1.4fr 1fr;gap:10px}
+  .captura button,.captura label{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:116px;padding:16px 10px;border:0;border-radius:14px;font-weight:700;cursor:pointer;text-align:center;font-size:16px}
+  .captura .ico{font-size:34px;line-height:1}
+  .captura small{font-weight:500;font-size:12px;opacity:.8}
+  .oculto-input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+  .fotos{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:8px;margin-top:14px}
+  .foto{position:relative;border:1px solid var(--borda);border-radius:12px;overflow:hidden;background:#fff;aspect-ratio:3/4}
+  .foto img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transition:transform .15s}
+  .foto .n{position:absolute;top:5px;left:5px;background:var(--navy);color:#fff;font-size:11px;font-weight:700;border-radius:6px;padding:1px 6px;z-index:1}
+  .foto .acoes{position:absolute;left:0;right:0;bottom:0;display:flex;background:rgba(255,255,255,.92);z-index:1}
+  .foto .acoes button{flex:1;border:0;background:none;min-height:36px;font-size:16px;cursor:pointer}
   .dica{font-size:14px;color:var(--suave);margin:12px 0 0}
 
-  /* conferir */
-  .alerta{border-radius:12px;padding:12px 14px;font-size:14px;margin-bottom:10px}
-  .alerta.am{background:var(--amarelo-claro);color:var(--amarelo)}
-  .alerta.vm{background:var(--vermelho-claro);color:var(--vermelho)}
-  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-  .chip{border:1px solid var(--borda);background:#fff;border-radius:999px;min-height:38px;padding:6px 14px;font-size:14px;font-weight:600;cursor:pointer}
-  .chip.sel{background:var(--navy);color:#fff;border-color:var(--navy)}
-  .contador{display:flex;align-items:center;gap:10px}
-  .contador button{width:58px;height:58px;flex:none;border:0;border-radius:14px;background:var(--azul-claro);color:var(--azul);font-size:28px;font-weight:700;cursor:pointer}
-  .contador input{flex:1;min-width:0;height:58px;text-align:center;font-size:30px;font-weight:800;color:var(--navy);border:1px solid var(--borda);border-radius:14px;-webkit-appearance:none;appearance:none;-moz-appearance:textfield}
-  .contador input::-webkit-outer-spin-button,.contador input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-  .info-pag{font-size:14px;color:var(--suave);margin-top:14px}
+  /* fila de envio */
+  .barra-prog{height:10px;background:var(--azul-claro);border-radius:999px;overflow:hidden;margin:4px 0 6px}
+  .barra-prog div{height:100%;width:0;background:var(--azul);transition:width .3s}
+  .status-geral{font-size:14px;color:var(--suave)}
+  .aviso-envio{font-size:13px;color:var(--amarelo);background:var(--amarelo-claro);border-radius:10px;padding:8px 12px;margin-top:10px}
+  .item{display:flex;gap:12px;align-items:center;border-top:1px solid var(--borda);padding:12px 0}
+  .item:first-child{border-top:0}
+  .item .mini{width:46px;height:60px;flex:none;border-radius:8px;overflow:hidden;background:#eef1f5;position:relative}
+  .item .mini img{width:100%;height:100%;object-fit:cover}
+  .item .txt{flex:1;min-width:0}
+  .item .t1{font-weight:700;font-size:15px;overflow:hidden;text-overflow:ellipsis}
+  .item .t2{font-size:13px;color:var(--suave);margin-top:2px}
+  .item .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .item.st-ok .t1{color:var(--verde)} .item.st-dup .t1{color:var(--amarelo)} .item.st-erro .t1{color:var(--vermelho)}
+  .mini-spin{width:22px;height:22px;border:3px solid var(--azul-claro);border-top-color:var(--azul);border-radius:50%;animation:g .9s linear infinite;display:inline-block;vertical-align:middle;margin-right:6px}
+  .resumo-pastas{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .resumo-pastas span{background:var(--verde-claro);color:var(--verde);border-radius:999px;padding:4px 10px;font-size:13px;font-weight:700}
 
-  .sucesso{text-align:center;padding:28px 18px}
-  .sucesso .big{font-size:52px;line-height:1}
-  .sucesso h2{margin:12px 0 6px;font-size:21px}
-  .caminho{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;background:var(--fundo);border-radius:10px;padding:10px;margin:12px 0 4px;word-break:break-all}
+  /* câmera */
+  .camera{position:fixed;inset:0;background:#000;z-index:20;display:none;flex-direction:column}
+  .camera.on{display:flex}
+  .camera video{flex:1;min-height:0;width:100%;object-fit:contain;background:#000}
+  .cam-topo{position:absolute;top:0;left:0;right:0;padding:calc(12px + var(--st)) 16px 12px;display:flex;justify-content:space-between;align-items:center;color:#fff;background:linear-gradient(rgba(0,0,0,.55),transparent);z-index:2}
+  .cam-topo .qtd{font-weight:800;font-size:16px}
+  .cam-topo .dica-cam{font-size:12.5px;opacity:.85}
+  .cam-base{display:flex;align-items:center;justify-content:space-between;padding:18px 26px calc(18px + var(--sb));background:#000}
+  .cam-ultima{width:56px;height:56px;border-radius:12px;border:2px solid rgba(255,255,255,.8);overflow:hidden;background:#222;position:relative}
+  .cam-ultima img{width:100%;height:100%;object-fit:cover}
+  .cam-ultima span{position:absolute;right:-6px;top:-6px;background:var(--azul);color:#fff;font-size:11px;font-weight:800;border-radius:999px;padding:1px 6px}
+  .disparo{width:78px;height:78px;border-radius:50%;border:5px solid #fff;background:rgba(255,255,255,.25);cursor:pointer;padding:0}
+  .disparo:active{transform:scale(.93);background:#fff}
+  .cam-ok{min-width:96px;min-height:48px;border:0;border-radius:999px;background:var(--azul);color:#fff;font-weight:800;font-size:15px;cursor:pointer}
+  .flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .25s}
+  .flash.on{opacity:.75;transition:none}
 
   /* pesquisa */
   .busca{display:grid;grid-template-columns:1fr auto;gap:10px}
   .busca #q{order:1;min-width:0}
   .busca #btnBuscar{order:2}
   .filtros{order:3;grid-column:1 / -1}
-  .filtros label.campo{margin-top:2px}
-  .res .sem{display:none}
   .res-cab{display:none}
-  .res{border:1px solid var(--borda);border-radius:14px;padding:14px;margin-top:10px;display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center}
-  .res .c-dest{font-weight:800;font-size:16px;color:var(--navy)}
-  .res .c-data,.res .c-qtd,.res .c-lista,.res .c-por{font-size:14px;color:var(--suave)}
-  .res .c-data{grid-column:1}
-  .res .c-qtd,.res .c-lista,.res .c-por{grid-column:1}
+  .res{border:1px solid var(--borda);border-radius:14px;padding:14px;margin-top:10px;display:grid;grid-template-columns:1fr auto;gap:3px 12px;align-items:center}
+  .res .c-pasta{font-weight:800;font-size:16px;color:var(--navy)}
+  .res .c-data,.res .c-regra,.res .c-lista,.res .c-por{font-size:14px;color:var(--suave);grid-column:1}
   .res .c-acao{grid-column:2;grid-row:1 / span 5}
   .res .c-acao .btn{min-height:46px;padding:10px 16px;font-size:15px}
-  .res .rot{display:inline}
+  .res .sem{display:none}
   .vazio{color:var(--suave);text-align:center;padding:24px 8px;font-size:15px}
   .res-titulo{font-size:14px;color:var(--suave);margin:14px 0 0}
 
-  .carregando{position:fixed;inset:0;background:rgba(11,37,69,.55);display:none;align-items:center;justify-content:center;z-index:10;padding:20px}
-  .carregando.on{display:flex}
-  .caixa{background:#fff;border-radius:18px;padding:24px 28px;text-align:center;max-width:300px;font-weight:600}
-  .spin{width:40px;height:40px;border:4px solid var(--azul-claro);border-top-color:var(--azul);border-radius:50%;margin:0 auto 12px;animation:g .9s linear infinite}
   @keyframes g{to{transform:rotate(360deg)}}
   .oculto{display:none!important}
 
-  /* ---------- celular: barra de ações fixa embaixo ---------- */
+  /* celular: barra de abas embaixo, como app */
   @media (max-width:819px){
     header{position:sticky;top:0;z-index:5;padding:calc(12px + var(--st)) calc(16px + var(--sr)) 12px calc(16px + var(--sl));box-shadow:0 2px 10px rgba(0,0,0,.15)}
     header h1{font-size:19px}
-    header p{font-size:12.5px;margin-top:1px}
+    header p{font-size:12.5px}
     main{margin-top:6px;padding-bottom:calc(96px + var(--sb))}
     .abas{position:fixed;left:0;right:0;bottom:0;z-index:6;border-radius:0;padding:6px calc(10px + var(--sr)) calc(6px + var(--sb)) calc(10px + var(--sl));
           box-shadow:0 -2px 14px rgba(11,37,69,.12);border-top:1px solid var(--borda)}
-    .aba{min-height:56px;flex-direction:column;display:flex;align-items:center;justify-content:center;gap:2px;font-size:13px}
+    .aba{min-height:56px;flex-direction:column;gap:2px;font-size:13px}
     .aba .ic{font-size:22px;line-height:1}
     .aba.ativa{background:var(--azul-claro);color:var(--navy)}
-  }
-  @media (max-width:640px){
     .barra-fixa{position:sticky;bottom:calc(70px + var(--sb));margin:16px -18px -18px;padding:12px 18px;background:rgba(255,255,255,.96);
                 -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-top:1px solid var(--borda);border-radius:0 0 var(--raio) var(--raio)}
-    .barra-fixa.linha-btn{margin-top:16px}
   }
-  @media (max-width:360px){
-    .captura label{min-height:96px;font-size:14px}
-    .contador button{width:50px;height:50px}
-  }
-
-  /* ---------- PC / notebook: pesquisa em tabela ---------- */
+  /* PC / notebook: pesquisa em tabela */
   @media (min-width:820px){
     header h1{font-size:26px}
-    .busca{grid-template-columns:1fr 260px auto}
+    .busca{grid-template-columns:1fr 280px auto}
     .filtros label.campo{display:none}
     .filtros{order:2;grid-column:auto}
     .busca #btnBuscar{order:3}
-    .res .sem{display:block}
-    .res-cab,.res{display:grid;grid-template-columns:160px 1.1fr 110px 140px 1fr 140px;gap:12px;align-items:center}
+    .res-cab,.res{display:grid;grid-template-columns:150px 1fr 1fr 120px 130px 130px;gap:12px;align-items:center}
     .res-cab{margin-top:14px;padding:10px 14px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--suave);border-bottom:2px solid var(--borda)}
     .res{margin-top:0;border:0;border-bottom:1px solid var(--borda);border-radius:0;padding:12px 14px}
     .res:hover{background:#f7f9fc}
-    .res .c-data,.res .c-dest,.res .c-qtd,.res .c-lista,.res .c-por,.res .c-acao{grid-column:auto;grid-row:auto}
-    .res .c-data,.res .c-qtd,.res .c-lista,.res .c-por{font-size:15px;color:var(--texto)}
-    .res .c-dest{font-size:15px}
-    .res .rot{display:none}
-    .res .c-acao{text-align:right}
+    .res .c-data,.res .c-pasta,.res .c-regra,.res .c-lista,.res .c-por,.res .c-acao{grid-column:auto;grid-row:auto}
     .res .c-data{order:-1}
+    .res .c-data,.res .c-regra,.res .c-lista,.res .c-por{font-size:15px;color:var(--texto)}
+    .res .c-pasta{font-size:15px}
+    .res .rot{display:none}
+    .res .sem{display:block}
+    .res .c-acao{text-align:right}
   }
 </style>
 </head>
 <body>
-<div id="offline" class="offline">Sem internet — conecte para enviar ou pesquisar</div>
+<div id="offline" class="offline">Sem internet — as fotos ficam guardadas; conecte para enviar</div>
 <header>
   <div class="topo">
     <div class="marca">
@@ -192,61 +194,35 @@
 
   <!-- ===================== ENVIAR ===================== -->
   <section id="aba-enviar">
-    <!-- Passo 1: fotos -->
-    <div id="passo-fotos" class="card">
-      <h2>1. Fotografe o romaneio</h2>
+    <!-- Fotos -->
+    <div id="tela-fotos" class="card">
+      <h2>Fotografe os romaneios <span id="contFotos" class="cont oculto">0</span></h2>
       <div class="captura">
-        <label class="sec"><span class="ico">📷</span>Tirar foto
-          <input id="inCamera" type="file" accept="image/*" capture="environment">
+        <button id="btnCamera" class="sec" type="button"><span class="ico">📷</span>Abrir câmera<small>várias fotos seguidas</small></button>
+        <label class="neutro"><span class="ico">🖼️</span>Galeria<small>selecionar várias</small>
+          <input id="inGaleria" class="oculto-input" type="file" accept="image/*" multiple>
         </label>
-        <label class="neutro"><span class="ico">🖼️</span>Galeria / arquivo
-          <input id="inGaleria" type="file" accept="image/*" multiple>
-        </label>
+        <input id="inCamera" class="oculto-input" type="file" accept="image/*" capture="environment">
       </div>
-      <div id="pags" class="pags"></div>
-      <p class="dica">Papel inteiro na foto, reto e com boa luz. Mais de uma página? Tire uma foto por página. Use ⟳ para girar.</p>
+      <div id="fotos" class="fotos"></div>
+      <p class="dica">1 foto = 1 romaneio. Papel inteiro, reto e com boa luz. Cada foto é lida e salva na pasta certa automaticamente.</p>
       <label class="campo" for="enviadoPor">Quem está enviando (opcional)</label>
       <input id="enviadoPor" type="text" placeholder="Seu nome" autocomplete="name" autocapitalize="words">
       <div class="linha-btn barra-fixa">
-        <button id="btnLer" class="btn prim largo" disabled>Continuar →</button>
+        <button id="btnEnviar" class="btn prim largo" disabled>Enviar fotos</button>
       </div>
     </div>
 
-    <!-- Passo 2: conferir -->
-    <div id="passo-conferir" class="card oculto">
-      <h2>2. Confira e salve</h2>
-      <div id="avisos"></div>
-      <div id="dup" class="alerta vm oculto"></div>
-
-      <label class="campo" for="fQtd">Quantidade de entregas</label>
-      <div class="contador">
-        <button type="button" id="qMenos" aria-label="Diminuir">−</button>
-        <input id="fQtd" type="text" inputmode="numeric" pattern="[0-9]*" value="0" aria-label="Quantidade de entregas">
-        <button type="button" id="qMais" aria-label="Aumentar">+</button>
-      </div>
-
-      <label class="campo" for="fDest">Destinatário (nome da pasta)</label>
-      <input id="fDest" type="text" list="dlDest" placeholder="Ex.: SC1087" autocapitalize="characters" autocomplete="off">
-      <datalist id="dlDest"></datalist>
-      <div id="chipsDest" class="chips"></div>
-
-      <div id="infoPag" class="info-pag"></div>
-
+    <!-- Fila de envio -->
+    <div id="tela-envio" class="card oculto">
+      <h2 id="tituloEnvio">Enviando…</h2>
+      <div class="barra-prog"><div id="prog"></div></div>
+      <div id="statusGeral" class="status-geral"></div>
+      <div id="avisoEnvio" class="aviso-envio">Mantenha o app aberto até terminar.</div>
+      <div id="resumoPastas" class="resumo-pastas"></div>
+      <div id="lista" style="margin-top:8px"></div>
       <div class="linha-btn barra-fixa">
-        <button id="btnVoltar" class="btn neutro">← Fotos</button>
-        <button id="btnSalvar" class="btn ok">✔ Salvar</button>
-      </div>
-    </div>
-
-    <!-- Passo 3: ok -->
-    <div id="passo-ok" class="card sucesso oculto">
-      <div class="big">✅</div>
-      <h2>Romaneio salvo!</h2>
-      <div id="okResumo"></div>
-      <div id="okCaminho" class="caminho"></div>
-      <div class="linha-btn">
-        <a id="okLink" class="btn sec" href="#" target="_blank" rel="noopener">Abrir PDF</a>
-        <button id="btnNovo" class="btn prim">📷 Enviar outro</button>
+        <button id="btnNova" class="btn prim largo" disabled>📷 Nova remessa</button>
       </div>
     </div>
   </section>
@@ -256,58 +232,64 @@
     <div class="card">
       <h2>Pesquisar romaneio</h2>
       <div class="busca">
-        <input id="q" type="search" placeholder="Destinatário, data (11/11/2026), pedido, NF, lista…" enterkeyhint="search">
+        <input id="q" type="search" placeholder="Pasta, data (12/11/2026), lista, pedido, NF…" enterkeyhint="search">
         <div class="filtros">
-          <label class="campo" for="filtroDest">Destinatário</label>
-          <select id="filtroDest"><option value="">Todos os destinatários</option></select>
+          <label class="campo" for="filtroPasta">Pasta</label>
+          <select id="filtroPasta"><option value="">Todas as pastas</option></select>
         </div>
         <button id="btnBuscar" class="btn prim">Buscar</button>
       </div>
       <div id="resTitulo" class="res-titulo"></div>
-      <div class="res-cab"><div>Enviado em</div><div>Destinatário</div><div>Entregas</div><div>Nº Lista</div><div>Enviado por</div><div></div></div>
+      <div class="res-cab"><div>Enviado em</div><div>Pasta</div><div>Regra</div><div>Nº Lista</div><div>Enviado por</div><div></div></div>
       <div id="resultados"></div>
     </div>
   </section>
 </main>
 
-<div id="carregando" class="carregando"><div class="caixa"><div class="spin"></div><div id="msgCarregando">Processando…</div></div></div>
+<!-- Câmera contínua -->
+<div id="camera" class="camera" aria-hidden="true">
+  <div class="cam-topo">
+    <div><div class="qtd" id="camQtd">0 fotos</div><div class="dica-cam">Enquadre o romaneio inteiro e toque no botão</div></div>
+    <button id="camFechar" class="cam-ok" style="background:rgba(255,255,255,.18);min-width:auto;padding:0 16px">✕</button>
+  </div>
+  <video id="video" playsinline muted autoplay></video>
+  <div id="flash" class="flash"></div>
+  <div class="cam-base">
+    <div class="cam-ultima" id="camUltima"><span id="camN" class="oculto">0</span></div>
+    <button id="disparo" class="disparo" aria-label="Tirar foto"></button>
+    <button id="camOk" class="cam-ok">Concluir</button>
+  </div>
+</div>
 
 <script>
 (function(){
-  // ---------- estado ----------
-  var pags = [];           // {id, img, rot, thumb}
-  var leitura = null;      // resultado da leitura do romaneio
-  var destinatarios = [];
-  var seq = 0;
-  var PASTA_MISTURADO = 'Outras Lojas';
-  var QUALIDADE = { lado: 2200, q: 0.75 };   // ~300–600 KB por página (legível e leve)
-
-  var $ = function(id){ return document.getElementById(id); };
   // ===== ENDEREÇO DO APPS SCRIPT (link /exec da implantação) =====
   var API_URL = 'https://script.google.com/macros/s/AKfycbzHcj3rySMnKuD1IvmM6ctr0X-Wo9KqnUhu5YveWdKchJkjIVxFye_jpVlgWcaM9_oo/exec';
 
+  var LADO_PDF = 2000, Q_PDF = 0.72;     // PDF legível e leve (~300–450 KB)
+  var LADO_OCR = 1600, Q_OCR = 0.62;     // versão menor só para a leitura
+  var SIMULTANEOS = 3;                   // fotos enviadas ao mesmo tempo
+
+  var fotos = [];   // {id, blob, rot, thumb, status, res, dup, erro}
+  var seq = 0, enviando = false, pastas = [];
+  var $ = function(id){ return document.getElementById(id); };
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function erroMsg(e){ return (e && e.message) ? e.message : String(e); }
+
+  // ---------- servidor ----------
   async function chamar(fn){
     var args = Array.prototype.slice.call(arguments, 1);
     if (!navigator.onLine) throw new Error('Sem internet no momento.');
     var resp;
     try {
-      resp = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },  // evita bloqueio (CORS) do Google
-        body: JSON.stringify({ acao: fn, args: args }),
-        redirect: 'follow'
-      });
-    } catch(e){ throw new Error('Falha de conexão com o servidor. Verifique a internet.'); }
-    var txt = await resp.text();
-    var json;
-    try { json = JSON.parse(txt); } catch(e){ throw new Error('Resposta inesperada do servidor (a implantação está com acesso "Qualquer pessoa"?).'); }
+      resp = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ acao: fn, args: args }), redirect: 'follow' });
+    } catch(e){ throw new Error('Falha de conexão. Verifique a internet.'); }
+    var txt = await resp.text(), json;
+    try { json = JSON.parse(txt); } catch(e){ throw new Error('Resposta inesperada do servidor.'); }
     if (!json.ok) throw new Error(json.erro || 'Erro no servidor.');
     return json.resultado;
   }
-  function carregando(msg){ $('msgCarregando').textContent = msg || 'Processando…'; $('carregando').classList.add('on'); }
-  function pronto(){ $('carregando').classList.remove('on'); }
-  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
-  function erroMsg(e){ return (e && e.message) ? e.message : String(e); }
 
   // ---------- abas ----------
   document.querySelectorAll('.aba').forEach(function(b){
@@ -317,217 +299,236 @@
       $('aba-enviar').classList.toggle('oculto', p);
       $('aba-pesquisar').classList.toggle('oculto', !p);
       document.body.classList.toggle('modo-pesquisa', p);
-      if (p && window.matchMedia('(min-width:820px)').matches) $('q').focus();
+      if (p) buscar();
     });
   });
 
-  // ---------- nome salvo no aparelho ----------
   try { $('enviadoPor').value = localStorage.getItem('romaneio_nome') || ''; } catch(e){}
   $('enviadoPor').addEventListener('change', function(){ try { localStorage.setItem('romaneio_nome', this.value.trim()); } catch(e){} });
 
-  // ---------- imagens ----------
-  function abrirImagem(file){
+  // ---------- imagem ----------
+  function canvasDe(fonte, sw, sh, maxLado, rot){
+    var s = Math.min(1, maxLado / Math.max(sw, sh));
+    var w = Math.round(sw * s), h = Math.round(sh * s), r = ((rot || 0) % 360 + 360) % 360;
+    var c = document.createElement('canvas');
+    c.width = (r % 180 === 0) ? w : h; c.height = (r % 180 === 0) ? h : w;
+    var x = c.getContext('2d');
+    x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height);
+    x.translate(c.width / 2, c.height / 2); x.rotate(r * Math.PI / 180);
+    x.drawImage(fonte, -w / 2, -h / 2, w, h);
+    return c;
+  }
+  function paraBlob(c, q){ return new Promise(function(res){ c.toBlob(res, 'image/jpeg', q); }); }
+  function abrirImagem(blob){
     return new Promise(function(res, rej){
-      var url = URL.createObjectURL(file);
-      var img = new Image();
-      img.onload = function(){ res(img); };
-      img.onerror = function(){ rej(new Error('Não consegui abrir a imagem ' + (file.name || ''))); };
+      var url = URL.createObjectURL(blob), img = new Image();
+      img.onload = function(){ URL.revokeObjectURL(url); res(img); };
+      img.onerror = function(){ URL.revokeObjectURL(url); rej(new Error('Imagem inválida')); };
       img.src = url;
     });
   }
-  function renderizar(img, rot, maxLado, q){
-    var s = Math.min(1, maxLado / Math.max(img.naturalWidth, img.naturalHeight));
-    var w = Math.round(img.naturalWidth * s), h = Math.round(img.naturalHeight * s);
-    var r = ((rot % 360) + 360) % 360;
-    var c = document.createElement('canvas');
-    c.width = (r % 180 === 0) ? w : h;
-    c.height = (r % 180 === 0) ? h : w;
-    var ctx = c.getContext('2d');
-    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
-    ctx.translate(c.width / 2, c.height / 2);
-    ctx.rotate(r * Math.PI / 180);
-    ctx.drawImage(img, -w / 2, -h / 2, w, h);
-    return { dataUrl: c.toDataURL('image/jpeg', q), w: c.width, h: c.height };
+  async function adicionarDeFonte(fonte, w, h){
+    var c = canvasDe(fonte, w, h, LADO_PDF, 0);
+    var thumb = canvasDe(c, c.width, c.height, 220, 0).toDataURL('image/jpeg', 0.6);
+    var f = { id: ++seq, blob: null, rot: 0, thumb: thumb, status: 'nova' };
+    fotos.push(f);
+    f.pronto = paraBlob(c, Q_PDF).then(function(b){ f.blob = b; c.width = c.height = 0; });  // libera memória
+    await f.pronto;
+    return f;
   }
-  async function adicionar(files){
-    if (!files.length) return;
-    carregando('Preparando foto…');
-    for (var i = 0; i < files.length; i++){
-      try {
-        var img = await abrirImagem(files[i]);
-        var p = { id: ++seq, img: img, rot: 0 };
-        p.thumb = renderizar(img, 0, 320, 0.7).dataUrl;
-        pags.push(p);
-      } catch(e){ alert(erroMsg(e)); }
+
+  // ---------- galeria (várias) ----------
+  $('inGaleria').addEventListener('change', async function(){
+    var arqs = Array.prototype.slice.call(this.files); this.value = '';
+    for (var i = 0; i < arqs.length; i++){
+      try { var img = await abrirImagem(arqs[i]); await adicionarDeFonte(img, img.naturalWidth, img.naturalHeight); }
+      catch(e){ alert('Não consegui abrir a imagem ' + (arqs[i].name || '')); }
+      desenharFotos();
     }
-    pronto();
-    desenharPags();
+  });
+  $('inCamera').addEventListener('change', async function(){
+    var arqs = Array.prototype.slice.call(this.files); this.value = '';
+    for (var i = 0; i < arqs.length; i++){
+      try { var img = await abrirImagem(arqs[i]); await adicionarDeFonte(img, img.naturalWidth, img.naturalHeight); } catch(e){}
+    }
+    desenharFotos();
+  });
+
+  // ---------- câmera contínua ----------
+  var stream = null;
+  $('btnCamera').addEventListener('click', abrirCamera);
+  async function abrirCamera(){
+    if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)){ $('inCamera').click(); return; }
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: false,
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 3840 }, height: { ideal: 2160 } } });
+    } catch(e){
+      alert('Não consegui abrir a câmera do app (' + erroMsg(e) + '). Vou abrir a câmera do aparelho.');
+      $('inCamera').click(); return;
+    }
+    var v = $('video'); v.srcObject = stream;
+    try { await v.play(); } catch(e){}
+    $('camera').classList.add('on');
+    atualizarCam();
   }
-  function desenharPags(){
-    var box = $('pags');
-    box.innerHTML = '';
-    pags.forEach(function(p, i){
+  function fecharCamera(){
+    if (stream){ stream.getTracks().forEach(function(t){ t.stop(); }); stream = null; }
+    $('video').srcObject = null;
+    $('camera').classList.remove('on');
+    desenharFotos();
+  }
+  $('camFechar').addEventListener('click', fecharCamera);
+  $('camOk').addEventListener('click', fecharCamera);
+  $('disparo').addEventListener('click', function(){
+    var v = $('video');
+    if (!v.videoWidth) return;
+    var fl = $('flash'); fl.classList.add('on'); setTimeout(function(){ fl.classList.remove('on'); }, 60);
+    if (navigator.vibrate) navigator.vibrate(25);
+    adicionarDeFonte(v, v.videoWidth, v.videoHeight).then(atualizarCam);
+    atualizarCam();
+  });
+  function atualizarCam(){
+    var n = fotos.filter(function(f){ return f.status === 'nova'; }).length;
+    $('camQtd').textContent = n + (n === 1 ? ' foto' : ' fotos');
+    var ult = fotos[fotos.length - 1];
+    $('camUltima').innerHTML = (ult ? '<img src="' + ult.thumb + '" alt="">' : '') + '<span id="camN"' + (n ? '' : ' class="oculto"') + '>' + n + '</span>';
+  }
+
+  // ---------- grade de fotos ----------
+  function desenharFotos(){
+    var novas = fotos.filter(function(f){ return f.status === 'nova'; });
+    var box = $('fotos'); box.innerHTML = '';
+    novas.forEach(function(f, i){
       var d = document.createElement('div');
-      d.className = 'pag';
-      d.innerHTML = '<span class="num">Pág. ' + (i + 1) + '</span><img alt="">' +
-        '<div class="acoes"><button type="button" title="Girar" data-a="girar">⟳</button>' +
-        (i > 0 ? '<button type="button" title="Mover para antes" data-a="subir">↑</button>' : '') +
-        '<button type="button" title="Remover" data-a="del">🗑</button></div>';
-      d.querySelector('img').src = p.thumb;
+      d.className = 'foto';
+      d.innerHTML = '<span class="n">' + (i + 1) + '</span><img alt="" style="transform:rotate(' + f.rot + 'deg)" src="' + f.thumb + '">' +
+        '<div class="acoes"><button type="button" data-a="girar" title="Girar">⟳</button><button type="button" data-a="del" title="Remover">🗑</button></div>';
       d.querySelectorAll('button').forEach(function(b){
         b.addEventListener('click', function(){
-          if (b.dataset.a === 'girar'){ p.rot = (p.rot + 90) % 360; p.thumb = renderizar(p.img, p.rot, 320, 0.7).dataUrl; }
-          if (b.dataset.a === 'del'){ pags.splice(pags.indexOf(p), 1); }
-          if (b.dataset.a === 'subir'){ var k = pags.indexOf(p); pags.splice(k, 1); pags.splice(k - 1, 0, p); }
-          desenharPags();
+          if (b.dataset.a === 'girar') f.rot = (f.rot + 90) % 360;
+          if (b.dataset.a === 'del') fotos.splice(fotos.indexOf(f), 1);
+          desenharFotos();
         });
       });
       box.appendChild(d);
     });
-    $('btnLer').disabled = pags.length === 0;
+    $('contFotos').textContent = novas.length;
+    $('contFotos').classList.toggle('oculto', !novas.length);
+    $('btnEnviar').disabled = !novas.length;
+    $('btnEnviar').textContent = novas.length ? 'Enviar ' + novas.length + (novas.length === 1 ? ' foto' : ' fotos') + ' →' : 'Enviar fotos';
   }
-  $('inCamera').addEventListener('change', function(){ adicionar(Array.prototype.slice.call(this.files)); this.value = ''; });
-  $('inGaleria').addEventListener('change', function(){ adicionar(Array.prototype.slice.call(this.files)); this.value = ''; });
 
-  function paginasFinais(){ return pags.map(function(p){ return renderizar(p.img, p.rot, QUALIDADE.lado, QUALIDADE.q); }); }
-  function b64(dataUrl){ return dataUrl.split(',')[1]; }
-
-  // ---------- passo 1 → 2: ler ----------
-  $('btnLer').addEventListener('click', async function(){
-    carregando('Lendo o romaneio…');
-    try {
-      var finais = paginasFinais();
-      leitura = await chamar('lerRomaneio', finais.map(function(f){ return b64(f.dataUrl); }));
-    } catch(e){
-      leitura = { erroOcr: erroMsg(e), destinatariosDetectados: [], entregas: [], pedidos: [], nfs: [], qtdEntregas: 0 };
-    }
-    pronto();
-    preencher(leitura);
-    mostrarPasso('conferir');
-  });
-
-  function preencher(d){
-    $('fQtd').value = d.qtdEntregas || 0;
-    $('fDest').value = d.destinatario || '';
-    $('dup').classList.add('oculto');
-    if (d.destinatariosExistentes) atualizarDestinatarios(d.destinatariosExistentes);
-
-    var av = '';
-    if (d.erroOcr) av += '<div class="alerta am">⚠️ Não consegui ler o romaneio automaticamente. Informe a quantidade e o destinatário. <small>(' + esc(d.erroOcr) + ')</small></div>';
-    if (d.misturado) av += '<div class="alerta am">🔀 Mais de um destinatário neste romaneio: <b>' +
-      d.destinatariosDetectados.map(function(x){ return esc(x.codigo) + ' (' + x.qtd + ')'; }).join(', ') +
-      '</b>. Vai para a pasta <b>' + PASTA_MISTURADO + '</b>. Se foi erro de leitura, toque no destinatário certo.</div>';
-    $('avisos').innerHTML = av;
-
-    var chips = $('chipsDest'); chips.innerHTML = '';
-    var opc = (d.destinatariosDetectados || []).map(function(x){ return x.codigo; });
-    if (opc.length > 1) opc.push(PASTA_MISTURADO);
-    opc.forEach(function(c){
-      var b = document.createElement('button');
-      b.type = 'button'; b.className = 'chip'; b.textContent = c;
-      b.addEventListener('click', function(){ $('fDest').value = c; marcarChips(); });
-      chips.appendChild(b);
-    });
-    marcarChips();
-    $('infoPag').textContent = pags.length + (pags.length > 1 ? ' páginas' : ' página') + ' · data e hora registradas no momento do envio';
-  }
-  function marcarChips(){
-    var v = $('fDest').value.trim().toUpperCase();
-    document.querySelectorAll('#chipsDest .chip').forEach(function(c){ c.classList.toggle('sel', c.textContent.toUpperCase() === v); });
-  }
-  $('fDest').addEventListener('input', marcarChips);
-  function qtd(){ var n = parseInt(String($('fQtd').value).replace(/\D/g, ''), 10); return isNaN(n) ? 0 : n; }
-  $('qMenos').addEventListener('click', function(){ $('fQtd').value = Math.max(0, qtd() - 1); });
-  $('qMais').addEventListener('click', function(){ $('fQtd').value = qtd() + 1; });
-  $('fQtd').addEventListener('input', function(){ this.value = this.value.replace(/\D/g, ''); });
-  $('fQtd').addEventListener('focus', function(){ this.select(); });
-
-  // ---------- passo 2: salvar ----------
-  function montarPdf(finais){
+  // ---------- envio em fila ----------
+  function montarPdf(c){
     var J = window.jspdf && window.jspdf.jsPDF;
     if (!J) return null;
-    var doc;
-    finais.forEach(function(p, i){
-      var o = p.w > p.h ? 'l' : 'p';
-      if (i === 0) doc = new J({ orientation: o, unit: 'pt', format: 'a4', compress: true });
-      else doc.addPage('a4', o);
-      var pw = doc.internal.pageSize.getWidth(), ph = doc.internal.pageSize.getHeight(), m = 14;
-      var s = Math.min((pw - 2 * m) / p.w, (ph - 2 * m) / p.h);
-      var w = p.w * s, h = p.h * s;
-      doc.addImage(p.dataUrl, 'JPEG', (pw - w) / 2, (ph - h) / 2, w, h, undefined, 'FAST');
-    });
+    var o = c.width > c.height ? 'l' : 'p';
+    var doc = new J({ orientation: o, unit: 'pt', format: 'a4', compress: true });
+    var pw = doc.internal.pageSize.getWidth(), ph = doc.internal.pageSize.getHeight(), m = 14;
+    var s = Math.min((pw - 2 * m) / c.width, (ph - 2 * m) / c.height), w = c.width * s, h = c.height * s;
+    doc.addImage(c.toDataURL('image/jpeg', Q_PDF), 'JPEG', (pw - w) / 2, (ph - h) / 2, w, h, undefined, 'FAST');
     return doc.output('datauristring').split(',')[1];
   }
-
-  async function salvar(forcar){
-    var dest = $('fDest').value.trim().toUpperCase() === PASTA_MISTURADO.toUpperCase() ? PASTA_MISTURADO : $('fDest').value.trim();
-    if (!dest){ alert('Informe o destinatário (nome da pasta).'); $('fDest').focus(); return; }
-    if (qtd() === 0 && !confirm('Quantidade de entregas está 0. Salvar mesmo assim?')) return;
-    carregando('Gerando PDF e salvando no Drive…');
-    try {
-      var finais = paginasFinais();
-      var pdf = null;
-      try { pdf = montarPdf(finais); } catch(e){ pdf = null; }
-      var L = leitura || {};
-      var det = L.destinatariosDetectados || [];
-      var r = await chamar('salvarRomaneio', {
-        pdfBase64: pdf,
-        imagens: pdf ? [] : finais.map(function(f){ return b64(f.dataUrl); }),
-        paginas: finais.length,
-        destinatario: dest,
-        destinatariosNoRomaneio: det.length ? det.map(function(x){ return x.codigo; }).join(', ') : dest,
-        qtdEntregas: qtd(),
-        lista: L.lista || '',
-        entregas: (L.entregas || []).join(', '),
-        pedidos: (L.pedidos || []).join(', '),
-        nfs: (L.nfs || []).join(', '),
-        textoOcr: L.textoOcr || '',
-        enviadoPor: $('enviadoPor').value.trim(),
-        forcar: !!forcar
-      });
-      pronto();
-      if (r.duplicado){
-        var x = r.existente;
-        $('dup').innerHTML = '⛔ Este romaneio (lista <b>' + esc(x.lista) + '</b>) já foi enviado em ' + esc(x.enviadoEm) +
-          (x.enviadoPor ? ' por ' + esc(x.enviadoPor) : '') + ' — pasta ' + esc(x.pasta) + '.' +
-          '<div class="linha-btn"><a class="btn sec" target="_blank" rel="noopener" href="' + esc(x.link) + '">Abrir existente</a>' +
-          '<button type="button" class="btn neutro" id="btnForcar">Salvar mesmo assim</button></div>';
-        $('dup').classList.remove('oculto');
-        $('btnForcar').addEventListener('click', function(){ salvar(true); });
-        $('dup').scrollIntoView({ behavior: 'smooth', block: 'center' });
-        return;
-      }
-      $('okResumo').innerHTML = '<b>' + esc(dest) + '</b> · ' + qtd() + ' entregas<br><span style="color:var(--suave)">' + esc(r.enviadoEm) + '</span>';
-      $('okCaminho').textContent = '📁 ' + r.caminho + ' / ' + r.nome;
-      $('okLink').href = r.url;
-      if (destinatarios.indexOf(dest) < 0) atualizarDestinatarios(destinatarios.concat([dest]));
-      mostrarPasso('ok');
-    } catch(e){
-      pronto();
-      alert('Não foi possível salvar: ' + erroMsg(e) + '\nVerifique a internet e tente de novo.');
-    }
+  async function preparar(f){
+    if (f.pronto) await f.pronto;
+    var img = await abrirImagem(f.blob);
+    var cPdf = canvasDe(img, img.naturalWidth, img.naturalHeight, LADO_PDF, f.rot);
+    var cOcr = canvasDe(img, img.naturalWidth, img.naturalHeight, LADO_OCR, f.rot);
+    var ocr = cOcr.toDataURL('image/jpeg', Q_OCR).split(',')[1];
+    var pdf = null;
+    try { pdf = montarPdf(cPdf); } catch(e){ pdf = null; }
+    var dados = { imagemOcr: ocr, pdfBase64: pdf, imagem: pdf ? null : cPdf.toDataURL('image/jpeg', Q_PDF).split(',')[1] };
+    cPdf.width = cPdf.height = cOcr.width = cOcr.height = 0;
+    return dados;
   }
-  $('btnSalvar').addEventListener('click', function(){ salvar(false); });
-  $('btnVoltar').addEventListener('click', function(){ mostrarPasso('fotos'); });
-  $('btnNovo').addEventListener('click', function(){
-    pags = []; leitura = null; desenharPags(); mostrarPasso('fotos');
-    $('inCamera').click();
+  async function processar(f, forcar){
+    f.status = 'enviando'; desenharItem(f);
+    try {
+      var dados = await preparar(f);
+      dados.enviadoPor = $('enviadoPor').value.trim();
+      dados.forcar = !!forcar;
+      var r = await chamar('processarFoto', dados);
+      if (r.duplicado){ f.status = 'dup'; f.dup = r; }
+      else { f.status = 'ok'; f.res = r; f.blob = null; }
+    } catch(e){ f.status = 'erro'; f.erro = erroMsg(e); }
+    desenharItem(f); atualizarProgresso();
+  }
+  $('btnEnviar').addEventListener('click', async function(){
+    var fila = fotos.filter(function(f){ return f.status === 'nova'; });
+    if (!fila.length) return;
+    fila.forEach(function(f){ f.status = 'fila'; });
+    enviando = true;
+    $('tela-fotos').classList.add('oculto'); $('tela-envio').classList.remove('oculto');
+    $('btnNova').disabled = true; $('avisoEnvio').classList.remove('oculto');
+    $('lista').innerHTML = '';
+    fotos.forEach(function(f){ if (f.status !== 'nova') desenharItem(f); });
+    atualizarProgresso();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    var i = 0;
+    async function trabalhador(){ while (i < fila.length){ var f = fila[i++]; await processar(f); } }
+    var ts = []; for (var k = 0; k < SIMULTANEOS; k++) ts.push(trabalhador());
+    await Promise.all(ts);
+    enviando = false;
+    $('btnNova').disabled = false; $('avisoEnvio').classList.add('oculto');
+    atualizarProgresso();
+    if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
+  });
+  function desenharItem(f){
+    var el = document.getElementById('it' + f.id);
+    if (!el){ el = document.createElement('div'); el.id = 'it' + f.id; $('lista').appendChild(el); }
+    var t1 = '', t2 = '', acts = '';
+    if (f.status === 'fila'){ t1 = 'Na fila'; t2 = 'Aguardando envio'; }
+    if (f.status === 'enviando'){ t1 = '<span class="mini-spin"></span>Lendo e salvando…'; }
+    if (f.status === 'ok'){
+      t1 = '✔ ' + esc(f.res.pasta); t2 = esc(f.res.regra) + (f.res.lista ? ' · Lista ' + esc(f.res.lista) : '');
+      acts = '<a class="btn sec peq" target="_blank" rel="noopener" href="' + esc(f.res.url) + '">PDF</a>';
+    }
+    if (f.status === 'dup'){
+      var x = f.dup.existente;
+      t1 = '⚠ Já enviado'; t2 = 'Lista ' + esc(f.dup.lista) + ' · ' + esc(x.enviadoEm) + ' · pasta ' + esc(x.pasta);
+      acts = '<a class="btn sec peq" target="_blank" rel="noopener" href="' + esc(x.link) + '">Ver</a><button class="btn neutro peq" data-a="forcar">Salvar</button>';
+    }
+    if (f.status === 'erro'){
+      t1 = '✖ Não enviado'; t2 = esc(f.erro);
+      acts = '<button class="btn prim peq" data-a="tentar">Tentar</button>';
+    }
+    el.className = 'item st-' + f.status;
+    el.innerHTML = '<div class="mini"><img alt="" style="transform:rotate(' + f.rot + 'deg)" src="' + f.thumb + '"></div>' +
+      '<div class="txt"><div class="t1">' + t1 + '</div><div class="t2">' + t2 + '</div></div><div class="acts">' + acts + '</div>';
+    var bf = el.querySelector('[data-a=forcar]'); if (bf) bf.addEventListener('click', function(){ processar(f, true); });
+    var bt = el.querySelector('[data-a=tentar]'); if (bt) bt.addEventListener('click', function(){ processar(f, false); });
+  }
+  function atualizarProgresso(){
+    var lote = fotos.filter(function(f){ return f.status !== 'nova'; });
+    var feitos = lote.filter(function(f){ return f.status === 'ok' || f.status === 'dup' || f.status === 'erro'; }).length;
+    var ok = lote.filter(function(f){ return f.status === 'ok'; });
+    var dup = lote.filter(function(f){ return f.status === 'dup'; }).length;
+    var err = lote.filter(function(f){ return f.status === 'erro'; }).length;
+    $('prog').style.width = (lote.length ? Math.round(feitos / lote.length * 100) : 0) + '%';
+    $('tituloEnvio').textContent = enviando ? 'Enviando ' + feitos + ' de ' + lote.length + '…' : 'Remessa concluída';
+    $('statusGeral').textContent = ok.length + ' salvo(s)' + (dup ? ' · ' + dup + ' já enviado(s)' : '') + (err ? ' · ' + err + ' com erro' : '');
+    var cont = {};
+    ok.forEach(function(f){ cont[f.res.pasta] = (cont[f.res.pasta] || 0) + 1; });
+    $('resumoPastas').innerHTML = Object.keys(cont).sort().map(function(p){ return '<span>📁 ' + esc(p) + ' · ' + cont[p] + '</span>'; }).join('');
+  }
+  $('btnNova').addEventListener('click', function(){
+    fotos = fotos.filter(function(f){ return f.status === 'erro' || f.status === 'nova'; });   // com erro voltam para reenviar
+    fotos.forEach(function(f){ f.status = 'nova'; f.erro = null; });
+    $('lista').innerHTML = ''; $('resumoPastas').innerHTML = '';
+    $('tela-envio').classList.add('oculto'); $('tela-fotos').classList.remove('oculto');
+    desenharFotos();
+    abrirCamera();
+  });
+  window.addEventListener('beforeunload', function(e){
+    if (enviando || fotos.some(function(f){ return f.status === 'nova'; })){ e.preventDefault(); e.returnValue = ''; }
   });
 
-  function mostrarPasso(p){
-    $('passo-fotos').classList.toggle('oculto', p !== 'fotos');
-    $('passo-conferir').classList.toggle('oculto', p !== 'conferir');
-    $('passo-ok').classList.toggle('oculto', p !== 'ok');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
   // ---------- pesquisa ----------
-  function atualizarDestinatarios(lst){
-    destinatarios = lst.filter(function(v, i, a){ return a.indexOf(v) === i; }).sort();
-    $('dlDest').innerHTML = destinatarios.map(function(d){ return '<option value="' + esc(d) + '">'; }).join('');
-    var atual = $('filtroDest').value;
-    $('filtroDest').innerHTML = '<option value="">Todos os destinatários</option>' +
-      destinatarios.map(function(d){ return '<option' + (d === atual ? ' selected' : '') + '>' + esc(d) + '</option>'; }).join('');
+  function atualizarPastas(lst){
+    pastas = lst.filter(function(v, i, a){ return a.indexOf(v) === i; }).sort();
+    var atual = $('filtroPasta').value;
+    $('filtroPasta').innerHTML = '<option value="">Todas as pastas</option>' +
+      pastas.map(function(d){ return '<option' + (d === atual ? ' selected' : '') + '>' + esc(d) + '</option>'; }).join('');
   }
   function desenharResultados(r, titulo){
     $('resTitulo').textContent = titulo;
@@ -536,9 +537,9 @@
     if (vazio){ $('resultados').innerHTML = '<div class="vazio">Nenhum romaneio encontrado.</div>'; return; }
     $('resultados').innerHTML = r.itens.map(function(x){
       return '<div class="res">' +
-        '<div class="c-dest">' + esc(x.pasta) + (x.destinatarios && x.destinatarios !== x.pasta ? ' <span style="font-weight:500;color:var(--suave)">(' + esc(x.destinatarios) + ')</span>' : '') + '</div>' +
+        '<div class="c-pasta">📁 ' + esc(x.pasta) + '</div>' +
         '<div class="c-data"><span class="rot">📅 </span>' + esc(x.enviadoEm) + '</div>' +
-        '<div class="c-qtd">' + esc(x.qtd || '0') + '<span class="rot"> entregas</span></div>' +
+        '<div class="c-regra' + (x.regra ? '' : ' sem') + '">' + esc(x.regra || '—') + '</div>' +
         '<div class="c-lista' + (x.lista ? '' : ' sem') + '"><span class="rot">Lista </span>' + esc(x.lista || '—') + '</div>' +
         '<div class="c-por' + (x.enviadoPor ? '' : ' sem') + '"><span class="rot">Enviado por </span>' + esc(x.enviadoPor || '—') + '</div>' +
         '<div class="c-acao"><a class="btn sec" target="_blank" rel="noopener" href="' + esc(x.link) + '">Abrir PDF</a></div>' +
@@ -546,34 +547,27 @@
     }).join('');
   }
   async function buscar(){
-    var q = $('q').value.trim(), f = $('filtroDest').value;
+    var q = $('q').value.trim(), f = $('filtroPasta').value;
     $('resultados').innerHTML = '<div class="vazio">Buscando…</div>';
     try {
       var r = await chamar('pesquisar', q, f);
       desenharResultados(r, q || f ? r.total + ' resultado(s)' + (r.total >= 100 ? ' — mostrando os 100 mais recentes' : '') : 'Últimos enviados');
-    } catch(e){ $('resultados').innerHTML = '<div class="vazio">Erro na busca: ' + esc(erroMsg(e)) + '</div>'; }
+    } catch(e){ $('resultados').innerHTML = '<div class="vazio">' + esc(erroMsg(e)) + '</div>'; }
   }
   $('btnBuscar').addEventListener('click', buscar);
   $('q').addEventListener('keydown', function(e){ if (e.key === 'Enter'){ e.preventDefault(); this.blur(); buscar(); } });
-  $('filtroDest').addEventListener('change', buscar);
+  $('filtroPasta').addEventListener('change', buscar);
 
-  // ---------- início ----------
   // ---------- app instalável ----------
-  if ('serviceWorker' in navigator && location.protocol === 'https:'){
-    navigator.serviceWorker.register('sw.js').catch(function(){});
-  }
+  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(function(){});
   var instalado = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   var promptInstalar = null;
-  window.addEventListener('beforeinstallprompt', function(e){
-    e.preventDefault(); promptInstalar = e; $('btnInstalar').classList.add('on');
-  });
+  window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); promptInstalar = e; $('btnInstalar').classList.add('on'); });
   $('btnInstalar').addEventListener('click', async function(){
     if (!promptInstalar) return;
-    promptInstalar.prompt();
-    try { await promptInstalar.userChoice; } catch(e){}
+    promptInstalar.prompt(); try { await promptInstalar.userChoice; } catch(e){}
     promptInstalar = null; this.classList.remove('on');
   });
-  window.addEventListener('appinstalled', function(){ $('btnInstalar').classList.remove('on'); });
   var ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   if (ios && !instalado){
     var visto = false; try { visto = localStorage.getItem('romaneio_dica_ios') === '1'; } catch(e){}
@@ -582,12 +576,12 @@
   function statusRede(){ $('offline').classList.toggle('on', !navigator.onLine); }
   window.addEventListener('online', statusRede); window.addEventListener('offline', statusRede); statusRede();
 
+  // ---------- início ----------
+  desenharFotos();
   chamar('inicial').then(function(d){
-    atualizarDestinatarios(d.destinatarios || []);
+    atualizarPastas(d.pastas || []);
     desenharResultados(d.recentes, 'Últimos enviados');
-  }).catch(function(e){
-    $('resultados').innerHTML = '<div class="vazio">' + esc(erroMsg(e)) + '</div>';
-  });
+  }).catch(function(e){ $('resultados').innerHTML = '<div class="vazio">' + esc(erroMsg(e)) + '</div>'; });
 })();
 </script>
 </body>
