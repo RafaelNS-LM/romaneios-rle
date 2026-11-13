@@ -174,7 +174,7 @@
 </style>
 </head>
 <body>
-<div id="offline" class="offline">Sem internet — as fotos ficam guardadas; conecte para enviar</div>
+<div id="offline" class="offline">Sem internet — as fotos ficam guardadas e são enviadas quando a conexão voltar</div>
 <header>
   <div class="topo">
     <div class="marca">
@@ -194,7 +194,6 @@
 
   <!-- ===================== ENVIAR ===================== -->
   <section id="aba-enviar">
-    <!-- Fotos -->
     <div id="tela-fotos" class="card">
       <h2>Fotografe os romaneios <span id="contFotos" class="cont oculto">0</span></h2>
       <div class="captura">
@@ -205,7 +204,7 @@
         <input id="inCamera" class="oculto-input" type="file" accept="image/*" capture="environment">
       </div>
       <div id="fotos" class="fotos"></div>
-      <p class="dica">1 foto = 1 romaneio. Papel inteiro, reto e com boa luz. Cada foto é lida e salva na pasta certa automaticamente.</p>
+      <p class="dica">1 foto = 1 romaneio. Papel inteiro, reto e com boa luz. As fotos ficam guardadas no aparelho até serem enviadas — pode continuar fotografando enquanto envia.</p>
       <label class="campo" for="enviadoPor">Quem está enviando (opcional)</label>
       <input id="enviadoPor" type="text" placeholder="Seu nome" autocomplete="name" autocapitalize="words">
       <div class="linha-btn barra-fixa">
@@ -213,17 +212,13 @@
       </div>
     </div>
 
-    <!-- Fila de envio -->
-    <div id="tela-envio" class="card oculto">
-      <h2 id="tituloEnvio">Enviando…</h2>
+    <div id="cardEnvios" class="card oculto">
+      <h2>Envios <button id="btnLimpar" type="button" class="btn neutro peq" style="margin-left:auto">Limpar concluídos</button></h2>
       <div class="barra-prog"><div id="prog"></div></div>
       <div id="statusGeral" class="status-geral"></div>
-      <div id="avisoEnvio" class="aviso-envio">Mantenha o app aberto até terminar.</div>
+      <div id="aviso2p" class="aviso-envio oculto"></div>
       <div id="resumoPastas" class="resumo-pastas"></div>
       <div id="lista" style="margin-top:8px"></div>
-      <div class="linha-btn barra-fixa">
-        <button id="btnNova" class="btn prim largo" disabled>📷 Nova remessa</button>
-      </div>
     </div>
   </section>
 
@@ -261,35 +256,23 @@
   </div>
 </div>
 
+<script src="fila.js"></script>
 <script>
 (function(){
-  // ===== ENDEREÇO DO APPS SCRIPT (link /exec da implantação) =====
-  var API_URL = 'https://script.google.com/macros/s/AKfycbzHcj3rySMnKuD1IvmM6ctr0X-Wo9KqnUhu5YveWdKchJkjIVxFye_jpVlgWcaM9_oo/exec';
-
+  var F = window.RLEFila;
   var LADO_PDF = 2000, Q_PDF = 0.72;     // PDF legível e leve (~300–450 KB)
   var LADO_OCR = 1600, Q_OCR = 0.62;     // versão menor só para a leitura
-  var SIMULTANEOS = 3;                   // fotos enviadas ao mesmo tempo
+  var DIA = 24 * 60 * 60 * 1000;
 
-  var fotos = [];   // {id, blob, rot, thumb, status, res, dup, erro}
-  var seq = 0, enviando = false, pastas = [];
+  var salvando = {};       // id → promessa de gravação da foto
+  var itens = {};          // id → {id, criado, thumb, rot, status, res, dup, erro, tentativas, proxTentativa}
+  var pastas = [];
   var $ = function(id){ return document.getElementById(id); };
   function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
   function erroMsg(e){ return (e && e.message) ? e.message : String(e); }
-
-  // ---------- servidor ----------
-  async function chamar(fn){
-    var args = Array.prototype.slice.call(arguments, 1);
-    if (!navigator.onLine) throw new Error('Sem internet no momento.');
-    var resp;
-    try {
-      resp = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ acao: fn, args: args }), redirect: 'follow' });
-    } catch(e){ throw new Error('Falha de conexão. Verifique a internet.'); }
-    var txt = await resp.text(), json;
-    try { json = JSON.parse(txt); } catch(e){ throw new Error('Resposta inesperada do servidor.'); }
-    if (!json.ok) throw new Error(json.erro || 'Erro no servidor.');
-    return json.resultado;
-  }
+  function novoId(){ return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10); }
+  function lista(st){ return Object.keys(itens).map(function(k){ return itens[k]; }).filter(function(i){ return !st || st.indexOf(i.status) >= 0; }); }
+  var ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
   // ---------- abas ----------
   document.querySelectorAll('.aba').forEach(function(b){
@@ -302,7 +285,6 @@
       if (p) buscar();
     });
   });
-
   try { $('enviadoPor').value = localStorage.getItem('romaneio_nome') || ''; } catch(e){}
   $('enviadoPor').addEventListener('change', function(){ try { localStorage.setItem('romaneio_nome', this.value.trim()); } catch(e){} });
 
@@ -327,17 +309,21 @@
       img.src = url;
     });
   }
+  // cada foto é gravada no aparelho na hora (não se perde se o app fechar)
   async function adicionarDeFonte(fonte, w, h){
     var c = canvasDe(fonte, w, h, LADO_PDF, 0);
-    var thumb = canvasDe(c, c.width, c.height, 220, 0).toDataURL('image/jpeg', 0.6);
-    var f = { id: ++seq, blob: null, rot: 0, thumb: thumb, status: 'nova' };
-    fotos.push(f);
-    f.pronto = paraBlob(c, Q_PDF).then(function(b){ f.blob = b; c.width = c.height = 0; });  // libera memória
-    await f.pronto;
-    return f;
+    var meta = { id: novoId(), criado: Date.now(), rot: 0, status: 'nova',
+                 thumb: canvasDe(c, c.width, c.height, 220, 0).toDataURL('image/jpeg', 0.6) };
+    itens[meta.id] = meta;
+    salvando[meta.id] = paraBlob(c, Q_PDF).then(function(blob){
+      c.width = c.height = 0;
+      return F.gravar(meta, { id: meta.id, blob: blob });
+    }).finally(function(){ delete salvando[meta.id]; });
+    await salvando[meta.id];
+    return meta;
   }
 
-  // ---------- galeria (várias) ----------
+  // ---------- galeria ----------
   $('inGaleria').addEventListener('change', async function(){
     var arqs = Array.prototype.slice.call(this.files); this.value = '';
     for (var i = 0; i < arqs.length; i++){
@@ -387,16 +373,18 @@
     adicionarDeFonte(v, v.videoWidth, v.videoHeight).then(atualizarCam);
     atualizarCam();
   });
+  // ligação/app minimizado com a câmera aberta: fecha a câmera (as fotos já estão salvas)
+  document.addEventListener('visibilitychange', function(){ if (document.hidden && stream) fecharCamera(); });
   function atualizarCam(){
-    var n = fotos.filter(function(f){ return f.status === 'nova'; }).length;
+    var novas = lista(['nova']).sort(function(a, b){ return a.criado - b.criado; });
+    var n = novas.length, ult = novas[n - 1];
     $('camQtd').textContent = n + (n === 1 ? ' foto' : ' fotos');
-    var ult = fotos[fotos.length - 1];
-    $('camUltima').innerHTML = (ult ? '<img src="' + ult.thumb + '" alt="">' : '') + '<span id="camN"' + (n ? '' : ' class="oculto"') + '>' + n + '</span>';
+    $('camUltima').innerHTML = (ult ? '<img src="' + ult.thumb + '" alt="">' : '') + '<span' + (n ? '' : ' class="oculto"') + '>' + n + '</span>';
   }
 
-  // ---------- grade de fotos ----------
+  // ---------- fotos ainda não enviadas ----------
   function desenharFotos(){
-    var novas = fotos.filter(function(f){ return f.status === 'nova'; });
+    var novas = lista(['nova']).sort(function(a, b){ return a.criado - b.criado; });
     var box = $('fotos'); box.innerHTML = '';
     novas.forEach(function(f, i){
       var d = document.createElement('div');
@@ -404,9 +392,9 @@
       d.innerHTML = '<span class="n">' + (i + 1) + '</span><img alt="" style="transform:rotate(' + f.rot + 'deg)" src="' + f.thumb + '">' +
         '<div class="acoes"><button type="button" data-a="girar" title="Girar">⟳</button><button type="button" data-a="del" title="Remover">🗑</button></div>';
       d.querySelectorAll('button').forEach(function(b){
-        b.addEventListener('click', function(){
-          if (b.dataset.a === 'girar') f.rot = (f.rot + 90) % 360;
-          if (b.dataset.a === 'del') fotos.splice(fotos.indexOf(f), 1);
+        b.addEventListener('click', async function(){
+          if (b.dataset.a === 'girar'){ f.rot = (f.rot + 90) % 360; await F.gravar(f); }
+          if (b.dataset.a === 'del'){ delete itens[f.id]; await F.apagar(f.id); }
           desenharFotos();
         });
       });
@@ -418,7 +406,7 @@
     $('btnEnviar').textContent = novas.length ? 'Enviar ' + novas.length + (novas.length === 1 ? ' foto' : ' fotos') + ' →' : 'Enviar fotos';
   }
 
-  // ---------- envio em fila ----------
+  // ---------- preparar e colocar na fila ----------
   function montarPdf(c){
     var J = window.jspdf && window.jspdf.jsPDF;
     if (!J) return null;
@@ -429,101 +417,160 @@
     doc.addImage(c.toDataURL('image/jpeg', Q_PDF), 'JPEG', (pw - w) / 2, (ph - h) / 2, w, h, undefined, 'FAST');
     return doc.output('datauristring').split(',')[1];
   }
-  async function preparar(f){
-    if (f.pronto) await f.pronto;
-    var img = await abrirImagem(f.blob);
-    var cPdf = canvasDe(img, img.naturalWidth, img.naturalHeight, LADO_PDF, f.rot);
-    var cOcr = canvasDe(img, img.naturalWidth, img.naturalHeight, LADO_OCR, f.rot);
-    var ocr = cOcr.toDataURL('image/jpeg', Q_OCR).split(',')[1];
-    var pdf = null;
-    try { pdf = montarPdf(cPdf); } catch(e){ pdf = null; }
-    var dados = { imagemOcr: ocr, pdfBase64: pdf, imagem: pdf ? null : cPdf.toDataURL('image/jpeg', Q_PDF).split(',')[1] };
+  async function preparar(meta){
+    if (salvando[meta.id]) await salvando[meta.id];
+    var d = await F.pegar('dados', meta.id);
+    if (!d || !d.blob) throw new Error('Foto não encontrada');
+    var img = await abrirImagem(d.blob);
+    var cPdf = canvasDe(img, img.naturalWidth, img.naturalHeight, LADO_PDF, meta.rot);
+    var cOcr = canvasDe(img, img.naturalWidth, img.naturalHeight, LADO_OCR, meta.rot);
+    var payload = { imagemOcr: cOcr.toDataURL('image/jpeg', Q_OCR).split(',')[1], pdfBase64: null, imagem: null };
+    try { payload.pdfBase64 = montarPdf(cPdf); } catch(e){ payload.pdfBase64 = null; }
+    if (!payload.pdfBase64) payload.imagem = cPdf.toDataURL('image/jpeg', Q_PDF).split(',')[1];
     cPdf.width = cPdf.height = cOcr.width = cOcr.height = 0;
-    return dados;
-  }
-  async function processar(f, forcar){
-    f.status = 'enviando'; desenharItem(f);
-    try {
-      var dados = await preparar(f);
-      dados.enviadoPor = $('enviadoPor').value.trim();
-      dados.forcar = !!forcar;
-      var r = await chamar('processarFoto', dados);
-      if (r.duplicado){ f.status = 'dup'; f.dup = r; }
-      else { f.status = 'ok'; f.res = r; f.blob = null; }
-    } catch(e){ f.status = 'erro'; f.erro = erroMsg(e); }
-    desenharItem(f); atualizarProgresso();
+    return payload;
   }
   $('btnEnviar').addEventListener('click', async function(){
-    var fila = fotos.filter(function(f){ return f.status === 'nova'; });
-    if (!fila.length) return;
-    fila.forEach(function(f){ f.status = 'fila'; });
-    enviando = true;
-    $('tela-fotos').classList.add('oculto'); $('tela-envio').classList.remove('oculto');
-    $('btnNova').disabled = true; $('avisoEnvio').classList.remove('oculto');
-    $('lista').innerHTML = '';
-    fotos.forEach(function(f){ if (f.status !== 'nova') desenharItem(f); });
-    atualizarProgresso();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    var i = 0;
-    async function trabalhador(){ while (i < fila.length){ var f = fila[i++]; await processar(f); } }
-    var ts = []; for (var k = 0; k < SIMULTANEOS; k++) ts.push(trabalhador());
-    await Promise.all(ts);
-    enviando = false;
-    $('btnNova').disabled = false; $('avisoEnvio').classList.add('oculto');
-    atualizarProgresso();
-    if (navigator.vibrate) navigator.vibrate([40, 60, 40]);
+    var novas = lista(['nova']).sort(function(a, b){ return a.criado - b.criado; });
+    if (!novas.length) return;
+    var quem = $('enviadoPor').value.trim();
+    this.disabled = true;
+    for (var i = 0; i < novas.length; i++){
+      var m = novas[i];
+      $('btnEnviar').textContent = 'Preparando ' + (i + 1) + ' de ' + novas.length + '…';
+      try {
+        var payload = await preparar(m);
+        m.status = 'fila'; m.enviadoPor = quem; m.tentativas = 0; m.forcar = false;
+        await F.gravar(m, { id: m.id, payload: payload });
+      } catch(e){
+        m.status = 'erro'; m.erro = 'Não consegui preparar a foto: ' + erroMsg(e); m.tentativas = 99;
+        await F.gravar(m);
+      }
+      desenharItem(m); atualizarResumo();
+      if (i === 0) iniciarEnvio();          // começa a enviar enquanto prepara as demais
+    }
+    desenharFotos();
+    iniciarEnvio();
   });
+
+  // ---------- envio (2º plano) ----------
+  var swAtivo = false;
+  async function iniciarEnvio(){
+    var sw = navigator.serviceWorker;
+    if (sw && sw.controller){
+      swAtivo = true;
+      sw.controller.postMessage({ tipo: 'processar' });
+      try { var reg = await sw.ready; if (reg.sync) await reg.sync.register('enviar-romaneios'); } catch(e){}
+    } else {
+      F.processar();                        // sem service worker: a própria tela envia
+    }
+    manterTelaAcesa();
+  }
+  function aoMudarItem(it){
+    var antigo = itens[it.id];
+    if (!antigo && it.status === 'nova') return;
+    if (antigo) for (var k in it) antigo[k] = it[k]; else itens[it.id] = it;
+    desenharItem(itens[it.id]); atualizarResumo();
+  }
+  F.aoMudar(aoMudarItem);
+  if (navigator.serviceWorker) navigator.serviceWorker.addEventListener('message', function(e){
+    if (e.data && e.data.tipo === 'item') aoMudarItem(e.data.item);
+  });
+
+  function quando(ms){ var s = Math.max(0, Math.round(ms / 1000)); return s < 60 ? s + 's' : Math.round(s / 60) + ' min'; }
   function desenharItem(f){
+    if (f.status === 'nova') return;
     var el = document.getElementById('it' + f.id);
-    if (!el){ el = document.createElement('div'); el.id = 'it' + f.id; $('lista').appendChild(el); }
+    if (!el){
+      el = document.createElement('div'); el.id = 'it' + f.id;
+      var box = $('lista'), antes = null;
+      Array.prototype.some.call(box.children, function(c){ if ((+c.dataset.criado) < f.criado){ antes = c; return true; } });
+      el.dataset.criado = f.criado;
+      box.insertBefore(el, antes);
+    }
     var t1 = '', t2 = '', acts = '';
-    if (f.status === 'fila'){ t1 = 'Na fila'; t2 = 'Aguardando envio'; }
+    if (f.status === 'fila'){ t1 = '⏳ Na fila'; t2 = 'Aguardando envio'; }
     if (f.status === 'enviando'){ t1 = '<span class="mini-spin"></span>Lendo e salvando…'; }
     if (f.status === 'ok'){
       t1 = '✔ ' + esc(f.res.pasta); t2 = esc(f.res.regra) + (f.res.lista ? ' · Lista ' + esc(f.res.lista) : '');
       acts = '<a class="btn sec peq" target="_blank" rel="noopener" href="' + esc(f.res.url) + '">PDF</a>';
     }
     if (f.status === 'dup'){
-      var x = f.dup.existente;
+      var x = f.dup.existente || {};
       t1 = '⚠ Já enviado'; t2 = 'Lista ' + esc(f.dup.lista) + ' · ' + esc(x.enviadoEm) + ' · pasta ' + esc(x.pasta);
-      acts = '<a class="btn sec peq" target="_blank" rel="noopener" href="' + esc(x.link) + '">Ver</a><button class="btn neutro peq" data-a="forcar">Salvar</button>';
+      acts = (x.link ? '<a class="btn sec peq" target="_blank" rel="noopener" href="' + esc(x.link) + '">Ver</a>' : '') +
+        '<button class="btn neutro peq" data-a="forcar">Salvar</button>';
     }
     if (f.status === 'erro'){
-      t1 = '✖ Não enviado'; t2 = esc(f.erro);
+      var auto = (f.tentativas || 0) <= 4;
+      t1 = auto ? '↻ Tentando de novo' : '✖ Não enviado';
+      t2 = esc(f.erro) + (auto && f.proxTentativa ? ' · nova tentativa em ' + quando(f.proxTentativa - Date.now()) : '');
       acts = '<button class="btn prim peq" data-a="tentar">Tentar</button>';
     }
     el.className = 'item st-' + f.status;
-    el.innerHTML = '<div class="mini"><img alt="" style="transform:rotate(' + f.rot + 'deg)" src="' + f.thumb + '"></div>' +
+    el.innerHTML = '<div class="mini"><img alt="" style="transform:rotate(' + (f.rot || 0) + 'deg)" src="' + f.thumb + '"></div>' +
       '<div class="txt"><div class="t1">' + t1 + '</div><div class="t2">' + t2 + '</div></div><div class="acts">' + acts + '</div>';
-    var bf = el.querySelector('[data-a=forcar]'); if (bf) bf.addEventListener('click', function(){ processar(f, true); });
-    var bt = el.querySelector('[data-a=tentar]'); if (bt) bt.addEventListener('click', function(){ processar(f, false); });
+    var bf = el.querySelector('[data-a=forcar]');
+    if (bf) bf.addEventListener('click', async function(){ f.forcar = true; f.status = 'fila'; f.tentativas = 0; await F.gravar(f); desenharItem(f); atualizarResumo(); iniciarEnvio(); });
+    var bt = el.querySelector('[data-a=tentar]');
+    if (bt) bt.addEventListener('click', async function(){ f.status = 'fila'; f.tentativas = 0; f.proxTentativa = 0; await F.gravar(f); desenharItem(f); atualizarResumo(); iniciarEnvio(); });
   }
-  function atualizarProgresso(){
-    var lote = fotos.filter(function(f){ return f.status !== 'nova'; });
-    var feitos = lote.filter(function(f){ return f.status === 'ok' || f.status === 'dup' || f.status === 'erro'; }).length;
+  function atualizarResumo(){
+    var lote = lista().filter(function(i){ return i.status !== 'nova'; });
+    $('cardEnvios').classList.toggle('oculto', !lote.length);
     var ok = lote.filter(function(f){ return f.status === 'ok'; });
     var dup = lote.filter(function(f){ return f.status === 'dup'; }).length;
     var err = lote.filter(function(f){ return f.status === 'erro'; }).length;
+    var pend = lote.filter(function(f){ return f.status === 'fila' || f.status === 'enviando'; }).length;
+    var feitos = lote.length - pend - lote.filter(function(f){ return f.status === 'erro' && (f.tentativas || 0) <= 4; }).length;
     $('prog').style.width = (lote.length ? Math.round(feitos / lote.length * 100) : 0) + '%';
-    $('tituloEnvio').textContent = enviando ? 'Enviando ' + feitos + ' de ' + lote.length + '…' : 'Remessa concluída';
-    $('statusGeral').textContent = ok.length + ' salvo(s)' + (dup ? ' · ' + dup + ' já enviado(s)' : '') + (err ? ' · ' + err + ' com erro' : '');
+    $('statusGeral').textContent = (pend ? '⏳ ' + pend + ' enviando · ' : '') + ok.length + ' salvo(s)' +
+      (dup ? ' · ' + dup + ' já enviado(s)' : '') + (err ? ' · ' + err + ' com erro' : '');
+    var temPend = pend > 0 || lote.some(function(f){ return f.status === 'erro' && (f.tentativas || 0) <= 4; });
+    $('aviso2p').classList.toggle('oculto', !temPend);
+    $('aviso2p').textContent = ios
+      ? 'Enviando. Pode continuar fotografando. Se sair do app (ex.: ligação), o envio pausa e continua sozinho quando você voltar — nada se perde.'
+      : 'Enviando em 2º plano. Pode continuar fotografando ou minimizar o app — nada se perde.';
     var cont = {};
     ok.forEach(function(f){ cont[f.res.pasta] = (cont[f.res.pasta] || 0) + 1; });
     $('resumoPastas').innerHTML = Object.keys(cont).sort().map(function(p){ return '<span>📁 ' + esc(p) + ' · ' + cont[p] + '</span>'; }).join('');
+    if (!temPend) liberarTela();
   }
-  $('btnNova').addEventListener('click', function(){
-    fotos = fotos.filter(function(f){ return f.status === 'erro' || f.status === 'nova'; });   // com erro voltam para reenviar
-    fotos.forEach(function(f){ f.status = 'nova'; f.erro = null; });
-    $('lista').innerHTML = ''; $('resumoPastas').innerHTML = '';
-    $('tela-envio').classList.add('oculto'); $('tela-fotos').classList.remove('oculto');
-    desenharFotos();
-    abrirCamera();
-  });
-  window.addEventListener('beforeunload', function(e){
-    if (enviando || fotos.some(function(f){ return f.status === 'nova'; })){ e.preventDefault(); e.returnValue = ''; }
+  $('btnLimpar').addEventListener('click', async function(){
+    var fim = lista(['ok', 'dup']);
+    for (var i = 0; i < fim.length; i++){
+      delete itens[fim[i].id]; await F.apagar(fim[i].id);
+      var el = document.getElementById('it' + fim[i].id); if (el) el.remove();
+    }
+    atualizarResumo();
   });
 
+  // tela acesa durante o envio (evita o celular apagar e pausar)
+  var trava = null;
+  async function manterTelaAcesa(){
+    try { if (!trava && 'wakeLock' in navigator && !document.hidden){ trava = await navigator.wakeLock.request('screen'); trava.addEventListener('release', function(){ trava = null; }); } } catch(e){}
+  }
+  function liberarTela(){ if (trava){ try { trava.release(); } catch(e){} trava = null; } }
+
+  // carrega o que estava salvo no aparelho e retoma envios
+  async function recarregar(){
+    var todos = await F.listar(), agora = Date.now();
+    for (var i = 0; i < todos.length; i++){
+      var it = todos[i];
+      if ((it.status === 'ok' || it.status === 'dup') && agora - it.criado > DIA){ await F.apagar(it.id); continue; }
+      itens[it.id] = it;
+    }
+    $('lista').innerHTML = '';
+    lista().sort(function(a, b){ return b.criado - a.criado; }).forEach(desenharItem);
+    desenharFotos(); atualizarResumo();
+    if (await F.pendentes()) iniciarEnvio();
+  }
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden){ itens = {}; recarregar(); } });
+  window.addEventListener('online', function(){ statusRede(); iniciarEnvio(); });
+  setInterval(function(){ lista(['erro']).forEach(desenharItem); }, 5000);   // atualiza a contagem das retentativas
+
   // ---------- pesquisa ----------
+  function chamar(fn){ return F.chamar(fn, Array.prototype.slice.call(arguments, 1)); }
   function atualizarPastas(lst){
     pastas = lst.filter(function(v, i, a){ return a.indexOf(v) === i; }).sort();
     var atual = $('filtroPasta').value;
@@ -542,7 +589,7 @@
         '<div class="c-regra' + (x.regra ? '' : ' sem') + '">' + esc(x.regra || '—') + '</div>' +
         '<div class="c-lista' + (x.lista ? '' : ' sem') + '"><span class="rot">Lista </span>' + esc(x.lista || '—') + '</div>' +
         '<div class="c-por' + (x.enviadoPor ? '' : ' sem') + '"><span class="rot">Enviado por </span>' + esc(x.enviadoPor || '—') + '</div>' +
-        '<div class="c-acao"><a class="btn sec" target="_blank" rel="noopener" href="' + esc(x.link) + '">Abrir PDF</a></div>' +
+        '<div class="c-acao">' + (x.link ? '<a class="btn sec" target="_blank" rel="noopener" href="' + esc(x.link) + '">Abrir PDF</a>' : '') + '</div>' +
       '</div>';
     }).join('');
   }
@@ -559,7 +606,7 @@
   $('filtroPasta').addEventListener('change', buscar);
 
   // ---------- app instalável ----------
-  if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(function(){});
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) navigator.serviceWorker.register('sw.js').catch(function(){});
   var instalado = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   var promptInstalar = null;
   window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); promptInstalar = e; $('btnInstalar').classList.add('on'); });
@@ -568,21 +615,22 @@
     promptInstalar.prompt(); try { await promptInstalar.userChoice; } catch(e){}
     promptInstalar = null; this.classList.remove('on');
   });
-  var ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   if (ios && !instalado){
     var visto = false; try { visto = localStorage.getItem('romaneio_dica_ios') === '1'; } catch(e){}
     if (!visto){ $('dicaIos').classList.add('on'); $('dicaIos').addEventListener('click', function(){ this.classList.remove('on'); try { localStorage.setItem('romaneio_dica_ios', '1'); } catch(e){} }); }
   }
   function statusRede(){ $('offline').classList.toggle('on', !navigator.onLine); }
-  window.addEventListener('online', statusRede); window.addEventListener('offline', statusRede); statusRede();
+  window.addEventListener('offline', statusRede); statusRede();
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function(){});   // pede para o celular não apagar a fila
 
   // ---------- início ----------
-  desenharFotos();
+  recarregar();
   chamar('inicial').then(function(d){
     atualizarPastas(d.pastas || []);
     desenharResultados(d.recentes, 'Últimos enviados');
   }).catch(function(e){ $('resultados').innerHTML = '<div class="vazio">' + esc(erroMsg(e)) + '</div>'; });
 })();
+
 </script>
 </body>
 </html>
