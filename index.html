@@ -84,6 +84,11 @@
   .foto .acoes{position:absolute;left:0;right:0;bottom:0;display:flex;background:rgba(255,255,255,.92);z-index:1}
   .foto .acoes button{flex:1;border:0;background:none;min-height:36px;font-size:16px;cursor:pointer}
   .dica{font-size:14px;color:var(--suave);margin:12px 0 0}
+  .agrupar{margin-top:10px;flex-direction:column;gap:2px;background:#fff4e5;color:#8a4b00;border:1px dashed #e8a54b}
+  .agrupar small{font-weight:500;font-size:12px;opacity:.85}
+  .foto .pg{position:absolute;top:5px;right:5px;background:#e8a54b;color:#fff;font-size:11px;font-weight:800;border-radius:6px;padding:1px 6px;z-index:1}
+  .item .mini .pg{position:absolute;right:2px;bottom:2px;background:#e8a54b;color:#fff;font-size:10px;font-weight:800;border-radius:5px;padding:0 4px}
+  .camera.grupo .cam-topo{background:linear-gradient(rgba(138,75,0,.85),transparent)}
 
   /* fila de envio */
   .barra-prog{height:10px;background:var(--azul-claro);border-radius:999px;overflow:hidden;margin:4px 0 6px}
@@ -203,8 +208,9 @@
         </label>
         <input id="inCamera" class="oculto-input" type="file" accept="image/*" capture="environment">
       </div>
+      <button id="btnAgrupar" type="button" class="btn agrupar largo">📎 Agrupar fotos em 1 arquivo<small>várias páginas do mesmo documento</small></button>
       <div id="fotos" class="fotos"></div>
-      <p class="dica">1 foto = 1 romaneio. Papel inteiro, reto e com boa luz. As fotos ficam guardadas no aparelho até serem enviadas — pode continuar fotografando enquanto envia.</p>
+      <p class="dica">Câmera: 1 foto = 1 arquivo. Agrupar: todas as fotos tiradas viram 1 arquivo só. Papel inteiro, reto e com boa luz. As fotos ficam guardadas no aparelho até serem enviadas — pode continuar fotografando enquanto envia.</p>
       <label class="campo" for="enviadoPor">Quem está enviando (opcional)</label>
       <input id="enviadoPor" type="text" placeholder="Seu nome" autocomplete="name" autocapitalize="words">
       <div class="linha-btn barra-fixa">
@@ -310,7 +316,9 @@
     });
   }
   // cada foto é gravada no aparelho na hora (não se perde se o app fechar)
+  var paginasGrupo = {};   // id do grupo → [blobs]
   async function adicionarDeFonte(fonte, w, h){
+    if (grupo) return adicionarPagina(grupo, fonte, w, h);
     var c = canvasDe(fonte, w, h, LADO_PDF, 0);
     var meta = { id: novoId(), criado: Date.now(), rot: 0, status: 'nova',
                  thumb: canvasDe(c, c.width, c.height, 220, 0).toDataURL('image/jpeg', 0.6) };
@@ -323,6 +331,28 @@
     return meta;
   }
 
+  async function adicionarPagina(g, fonte, w, h){
+    var c = canvasDe(fonte, w, h, LADO_PDF, 0);
+    var mini = canvasDe(c, c.width, c.height, 220, 0).toDataURL('image/jpeg', 0.6);
+    if (!g.thumb) g.thumb = mini;
+    g.ultThumb = mini;
+    g.paginas = (g.paginas || 0) + 1;
+    itens[g.id] = g;
+    var blobs = paginasGrupo[g.id] = paginasGrupo[g.id] || [];
+    var anterior = salvando[g.id] || Promise.resolve();
+    var p = anterior.then(function(){ return paraBlob(c, Q_PDF); }).then(function(blob){
+      c.width = c.height = 0;
+      blobs.push(blob);
+      var meta = {}; for (var k in g) if (k !== 'ultThumb') meta[k] = g[k];
+      meta.paginas = blobs.length;
+      return F.gravar(meta, { id: g.id, blobs: blobs.slice() });
+    });
+    salvando[g.id] = p;
+    p.finally(function(){ if (salvando[g.id] === p) delete salvando[g.id]; });
+    await p;
+    return g;
+  }
+
   // ---------- galeria ----------
   $('inGaleria').addEventListener('change', async function(){
     var arqs = Array.prototype.slice.call(this.files); this.value = '';
@@ -331,6 +361,7 @@
       catch(e){ alert('Não consegui abrir a imagem ' + (arqs[i].name || '')); }
       desenharFotos();
     }
+    if (!stream) grupo = null;
   });
   $('inCamera').addEventListener('change', async function(){
     var arqs = Array.prototype.slice.call(this.files); this.value = '';
@@ -341,26 +372,31 @@
   });
 
   // ---------- câmera contínua ----------
-  var stream = null;
-  $('btnCamera').addEventListener('click', abrirCamera);
+  var stream = null, grupo = null;     // grupo = arquivo com várias páginas sendo montado
+  $('btnCamera').addEventListener('click', function(){ grupo = null; abrirCamera(); });
+  $('btnAgrupar').addEventListener('click', function(){ grupo = novoGrupo(); abrirCamera(); });
+  function novoGrupo(){ return { id: novoId(), criado: Date.now(), rot: 0, status: 'nova', paginas: 0, thumb: '' }; }
   async function abrirCamera(){
     if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)){ $('inCamera').click(); return; }
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: false,
         video: { facingMode: { ideal: 'environment' }, width: { ideal: 3840 }, height: { ideal: 2160 } } });
     } catch(e){
-      alert('Não consegui abrir a câmera do app (' + erroMsg(e) + '). Vou abrir a câmera do aparelho.');
-      $('inCamera').click(); return;
+      alert('Não consegui abrir a câmera do app (' + erroMsg(e) + ').' + (grupo ? ' Escolha as fotos do grupo na galeria.' : ' Vou abrir a câmera do aparelho.'));
+      if (grupo) { $('inGaleria').click(); } else { $('inCamera').click(); }
+      return;
     }
     var v = $('video'); v.srcObject = stream;
     try { await v.play(); } catch(e){}
     $('camera').classList.add('on');
+    $('camera').classList.toggle('grupo', !!grupo);
     atualizarCam();
   }
   function fecharCamera(){
     if (stream){ stream.getTracks().forEach(function(t){ t.stop(); }); stream = null; }
     $('video').srcObject = null;
     $('camera').classList.remove('on');
+    grupo = null;
     desenharFotos();
   }
   $('camFechar').addEventListener('click', fecharCamera);
@@ -376,9 +412,15 @@
   // ligação/app minimizado com a câmera aberta: fecha a câmera (as fotos já estão salvas)
   document.addEventListener('visibilitychange', function(){ if (document.hidden && stream) fecharCamera(); });
   function atualizarCam(){
+    if (grupo){
+      var pg = grupo.paginas || 0;
+      $('camQtd').textContent = '📎 Agrupando: ' + pg + (pg === 1 ? ' página' : ' páginas') + ' → 1 arquivo';
+      $('camUltima').innerHTML = (grupo.ultThumb ? '<img src="' + grupo.ultThumb + '" alt="">' : '') + '<span' + (pg ? '' : ' class="oculto"') + '>' + pg + '</span>';
+      return;
+    }
     var novas = lista(['nova']).sort(function(a, b){ return a.criado - b.criado; });
     var n = novas.length, ult = novas[n - 1];
-    $('camQtd').textContent = n + (n === 1 ? ' foto' : ' fotos');
+    $('camQtd').textContent = n + (n === 1 ? ' arquivo' : ' arquivos');
     $('camUltima').innerHTML = (ult ? '<img src="' + ult.thumb + '" alt="">' : '') + '<span' + (n ? '' : ' class="oculto"') + '>' + n + '</span>';
   }
 
@@ -389,12 +431,13 @@
     novas.forEach(function(f, i){
       var d = document.createElement('div');
       d.className = 'foto';
-      d.innerHTML = '<span class="n">' + (i + 1) + '</span><img alt="" style="transform:rotate(' + f.rot + 'deg)" src="' + f.thumb + '">' +
+      d.innerHTML = '<span class="n">' + (i + 1) + '</span>' + ((f.paginas || 1) > 1 ? '<span class="pg">📎 ' + f.paginas + ' pág.</span>' : '') +
+        '<img alt="" style="transform:rotate(' + f.rot + 'deg)" src="' + f.thumb + '">' +
         '<div class="acoes"><button type="button" data-a="girar" title="Girar">⟳</button><button type="button" data-a="del" title="Remover">🗑</button></div>';
       d.querySelectorAll('button').forEach(function(b){
         b.addEventListener('click', async function(){
           if (b.dataset.a === 'girar'){ f.rot = (f.rot + 90) % 360; await F.gravar(f); }
-          if (b.dataset.a === 'del'){ delete itens[f.id]; await F.apagar(f.id); }
+          if (b.dataset.a === 'del'){ delete itens[f.id]; delete paginasGrupo[f.id]; await F.apagar(f.id); }
           desenharFotos();
         });
       });
@@ -403,31 +446,41 @@
     $('contFotos').textContent = novas.length;
     $('contFotos').classList.toggle('oculto', !novas.length);
     $('btnEnviar').disabled = !novas.length;
-    $('btnEnviar').textContent = novas.length ? 'Enviar ' + novas.length + (novas.length === 1 ? ' foto' : ' fotos') + ' →' : 'Enviar fotos';
+    $('btnEnviar').textContent = novas.length ? 'Enviar ' + novas.length + (novas.length === 1 ? ' arquivo' : ' arquivos') + ' →' : 'Enviar fotos';
   }
 
   // ---------- preparar e colocar na fila ----------
-  function montarPdf(c){
+  function montarPdf(cs){
     var J = window.jspdf && window.jspdf.jsPDF;
     if (!J) return null;
-    var o = c.width > c.height ? 'l' : 'p';
-    var doc = new J({ orientation: o, unit: 'pt', format: 'a4', compress: true });
-    var pw = doc.internal.pageSize.getWidth(), ph = doc.internal.pageSize.getHeight(), m = 14;
-    var s = Math.min((pw - 2 * m) / c.width, (ph - 2 * m) / c.height), w = c.width * s, h = c.height * s;
-    doc.addImage(c.toDataURL('image/jpeg', Q_PDF), 'JPEG', (pw - w) / 2, (ph - h) / 2, w, h, undefined, 'FAST');
+    var doc;
+    cs.forEach(function(c, i){
+      var o = c.width > c.height ? 'l' : 'p';
+      if (i === 0) doc = new J({ orientation: o, unit: 'pt', format: 'a4', compress: true });
+      else doc.addPage('a4', o);
+      var pw = doc.internal.pageSize.getWidth(), ph = doc.internal.pageSize.getHeight(), m = 14;
+      var s = Math.min((pw - 2 * m) / c.width, (ph - 2 * m) / c.height), w = c.width * s, h = c.height * s;
+      doc.addImage(c.toDataURL('image/jpeg', Q_PDF), 'JPEG', (pw - w) / 2, (ph - h) / 2, w, h, undefined, 'FAST');
+    });
     return doc.output('datauristring').split(',')[1];
   }
   async function preparar(meta){
     if (salvando[meta.id]) await salvando[meta.id];
     var d = await F.pegar('dados', meta.id);
-    if (!d || !d.blob) throw new Error('Foto não encontrada');
-    var img = await abrirImagem(d.blob);
-    var cPdf = canvasDe(img, img.naturalWidth, img.naturalHeight, LADO_PDF, meta.rot);
-    var cOcr = canvasDe(img, img.naturalWidth, img.naturalHeight, LADO_OCR, meta.rot);
-    var payload = { imagemOcr: cOcr.toDataURL('image/jpeg', Q_OCR).split(',')[1], pdfBase64: null, imagem: null };
-    try { payload.pdfBase64 = montarPdf(cPdf); } catch(e){ payload.pdfBase64 = null; }
-    if (!payload.pdfBase64) payload.imagem = cPdf.toDataURL('image/jpeg', Q_PDF).split(',')[1];
-    cPdf.width = cPdf.height = cOcr.width = cOcr.height = 0;
+    var blobs = d && (d.blobs || (d.blob ? [d.blob] : null));
+    if (!blobs || !blobs.length) throw new Error('Foto não encontrada');
+    var cs = [], ocrs = [];
+    for (var i = 0; i < blobs.length; i++){
+      var img = await abrirImagem(blobs[i]);
+      cs.push(canvasDe(img, img.naturalWidth, img.naturalHeight, LADO_PDF, meta.rot));
+      var cO = canvasDe(img, img.naturalWidth, img.naturalHeight, LADO_OCR, meta.rot);
+      ocrs.push(cO.toDataURL('image/jpeg', Q_OCR).split(',')[1]);
+      cO.width = cO.height = 0;
+    }
+    var payload = { imagensOcr: ocrs, pdfBase64: null, imagens: null };
+    try { payload.pdfBase64 = montarPdf(cs); } catch(e){ payload.pdfBase64 = null; }
+    if (!payload.pdfBase64) payload.imagens = cs.map(function(c){ return c.toDataURL('image/jpeg', Q_PDF).split(',')[1]; });
+    cs.forEach(function(c){ c.width = c.height = 0; });
     return payload;
   }
   $('btnEnviar').addEventListener('click', async function(){
@@ -508,7 +561,8 @@
       acts = '<button class="btn prim peq" data-a="tentar">Tentar</button>';
     }
     el.className = 'item st-' + f.status;
-    el.innerHTML = '<div class="mini"><img alt="" style="transform:rotate(' + (f.rot || 0) + 'deg)" src="' + f.thumb + '"></div>' +
+    el.innerHTML = '<div class="mini"><img alt="" style="transform:rotate(' + (f.rot || 0) + 'deg)" src="' + f.thumb + '">' +
+      ((f.paginas || 1) > 1 ? '<span class="pg">' + f.paginas + ' pág</span>' : '') + '</div>' +
       '<div class="txt"><div class="t1">' + t1 + '</div><div class="t2">' + t2 + '</div></div><div class="acts">' + acts + '</div>';
     var bf = el.querySelector('[data-a=forcar]');
     if (bf) bf.addEventListener('click', async function(){ f.forcar = true; f.status = 'fila'; f.tentativas = 0; await F.gravar(f); desenharItem(f); atualizarResumo(); iniciarEnvio(); });

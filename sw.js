@@ -4,7 +4,7 @@
 //    mesmo com o app minimizado ou fechado (Background Sync).
 importScripts('fila.js');
 
-const VERSAO = 'romaneios-rle-v3';
+const VERSAO = 'romaneios-rle-v4';
 const ARQUIVOS = [
   './', './index.html', './fila.js', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/favicon.png',
